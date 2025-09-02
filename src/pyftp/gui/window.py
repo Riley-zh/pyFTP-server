@@ -10,12 +10,14 @@ import warnings
 import socket
 from threading import Thread, Event
 from datetime import datetime
+from typing import Dict, Any
 
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QStatusBar, QMessageBox, QFileDialog
 )
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, pyqtSignal
+from PyQt5.QtGui import QTextCursor
 
 from pyftp.gui.components.config_panel import ConfigPanel
 from pyftp.gui.components.control_panel import ControlPanel
@@ -39,10 +41,17 @@ class FTPWindow(QMainWindow):
         self.config_manager = ConfigManager(self.config_file)
         self.ftp_server_manager = FTPServerManager()
         
+        # 用于异步操作的定时器
+        self.status_update_timer = QTimer()
+        self.status_update_timer.timeout.connect(self.update_status)
+        
         self.setup_ui()
         self.setup_logging()
         self.load_config()
         
+        # 启动状态更新定时器
+        self.status_update_timer.start(1000)  # 每秒更新一次状态
+    
     def setup_ui(self):
         """Setup the user interface."""
         self.setWindowTitle("PyFTP Server")
@@ -86,16 +95,32 @@ class FTPWindow(QMainWindow):
         """Setup logging for the application."""
         from pyftp.server.logger import QtLogHandler
         
+        # 获取根日志记录器并移除所有现有的处理器
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+        
+        # 移除所有现有的处理器
+        for handler in root_logger.handlers[:]:
+            root_logger.removeHandler(handler)
+        
+        # 创建并添加我们的Qt日志处理器
         self.log_handler = QtLogHandler()
         self.log_handler.log_signal.connect(self.append_log)
-        logger = logging.getLogger()
-        logger.setLevel(logging.INFO)
-        logger.addHandler(self.log_handler)
+        root_logger.addHandler(self.log_handler)
         
-        # 设置pyftpdlib的日志级别
+        # 设置pyftpdlib的日志级别并添加我们的处理器
         ftp_logger = logging.getLogger('pyftpdlib')
         ftp_logger.setLevel(logging.INFO)
+        
+        # 移除pyftpdlib的所有现有处理器
+        for handler in ftp_logger.handlers[:]:
+            ftp_logger.removeHandler(handler)
+            
+        # 添加我们的处理器
         ftp_logger.addHandler(self.log_handler)
+        
+        # 记录一条测试日志，确认日志系统工作正常
+        logging.info("日志系统初始化完成")
     
     def append_log(self, message, level):
         """Append log message to the log panel."""
@@ -141,7 +166,24 @@ class FTPWindow(QMainWindow):
         if self.ftp_server_manager.is_running():
             logging.info("正在重新加载配置...")
             self.stop_server()
-            self.start_server()
+            # 使用定时器延迟启动以确保服务器完全停止
+            QTimer.singleShot(500, self._delayed_start_server)
+    
+    def _delayed_start_server(self):
+        """Wrapper method for starting server with QTimer."""
+        self.start_server()
+    
+    def update_status(self):
+        """Update the status bar with server information."""
+        if self.ftp_server_manager.is_running():
+            config = self.config_panel.get_config()
+            conn_count = self.ftp_server_manager.get_connection_count()
+            status_text = (f"服务器运行中: 端口 {config['port']}, "
+                          f"目录 {config['directory']}, "
+                          f"编码 {config['encoding'].upper()}, "
+                          f"{'多线程' if config['threading'] else '单线程'}模式, "
+                          f"连接数: {conn_count}")
+            self.status_bar.showMessage(status_text)
     
     def start_server(self):
         """Start the FTP server."""
@@ -172,12 +214,6 @@ class FTPWindow(QMainWindow):
             success = self.ftp_server_manager.start_server(config)
             if success:
                 self.control_panel.start_btn.setText("停止服务器")
-                self.status_bar.showMessage(
-                    f"服务器运行中: 端口 {config['port']}, "
-                    f"目录 {config['directory']}, "
-                    f"编码 {config['encoding'].upper()}, "
-                    f"{'多线程' if config['threading'] else '单线程'}模式"
-                )
                 self.control_panel.reload_btn.setEnabled(True)
                 logging.info(f"FTP服务器已启动 ({'多线程' if config['threading'] else '单线程'}模式)")
                 return True
@@ -196,25 +232,39 @@ class FTPWindow(QMainWindow):
             try:
                 self.ftp_server_manager.stop_server()
                 self.control_panel.start_btn.setText("启动服务器")
-                self.status_bar.showMessage("服务器已停止")
                 self.control_panel.reload_btn.setEnabled(False)
                 logging.info("FTP服务器已停止")
+                return True
             except Exception as e:
                 logging.error(f"停止服务器失败: {str(e)}")
-                QMessageBox.critical(self, "服务器错误", f"停止服务器失败: {str(e)}")
+                return False
+        return True
     
     def toggle_server(self):
-        """Toggle server start/stop."""
+        """Toggle the FTP server on/off."""
         if self.ftp_server_manager.is_running():
             self.stop_server()
         else:
             self.start_server()
     
-    def closeEvent(self, event):
+    def closeEvent(self, a0):
         """Handle window close event."""
+        # 停止状态更新定时器
+        self.status_update_timer.stop()
+        
+        # 停止FTP服务器
         if self.ftp_server_manager.is_running():
-            self.stop_server()
-            QTimer.singleShot(500, self.close)
-            event.ignore()
+            reply = QMessageBox.question(
+                self, '确认退出', 'FTP服务器正在运行，确定要退出吗？',
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                self.stop_server()
+                a0.accept()
+            else:
+                a0.ignore()
+                # 重新启动状态更新定时器
+                self.status_update_timer.start(1000)
         else:
-            event.accept()
+            a0.accept()

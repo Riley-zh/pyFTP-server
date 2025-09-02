@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
     QGroupBox, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QCheckBox, QComboBox
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QTimer
 from PyQt5.QtGui import QIntValidator
 
 
@@ -17,6 +17,7 @@ class ConfigPanel(QGroupBox):
     def __init__(self):
         super().__init__("服务器配置")
         self.setup_ui()
+        self._setup_validators()
     
     def setup_ui(self):
         """Setup the configuration UI."""
@@ -26,8 +27,6 @@ class ConfigPanel(QGroupBox):
         port_layout = QHBoxLayout()
         port_layout.addWidget(QLabel("端口:"))
         self.port_edit = QLineEdit("2121")
-        port_validator = QIntValidator(1, 65535, self.port_edit)
-        self.port_edit.setValidator(port_validator)
         port_layout.addWidget(self.port_edit)
         port_layout.addStretch()
         config_layout.addLayout(port_layout)
@@ -52,12 +51,9 @@ class ConfigPanel(QGroupBox):
         passive_sub_layout = QHBoxLayout()
         passive_sub_layout.addWidget(QLabel("被动端口范围:"))
         self.passive_start = QLineEdit("60000")
-        passive_validator = QIntValidator(1024, 65535, self.passive_start)
-        self.passive_start.setValidator(passive_validator)
         passive_sub_layout.addWidget(self.passive_start)
         passive_sub_layout.addWidget(QLabel("到"))
         self.passive_end = QLineEdit("61000")
-        self.passive_end.setValidator(passive_validator)
         passive_sub_layout.addWidget(self.passive_end)
         passive_sub_layout.addStretch()
         
@@ -88,6 +84,66 @@ class ConfigPanel(QGroupBox):
         config_layout.addLayout(threading_layout)
         self.setLayout(config_layout)
     
+    def _setup_validators(self):
+        """Setup input validators with delayed validation."""
+        # 使用定时器延迟验证，避免用户输入时频繁验证
+        self.port_validator = QIntValidator(1, 65535)
+        self.passive_start_validator = QIntValidator(1024, 65535)
+        self.passive_end_validator = QIntValidator(1024, 65535)
+        
+        # 定时器用于延迟验证
+        self.validation_timer = QTimer()
+        self.validation_timer.setSingleShot(True)
+        self.validation_timer.timeout.connect(self._perform_validation)
+        
+        # 连接输入变化信号
+        self.port_edit.textChanged.connect(lambda: self._schedule_validation('port'))
+        self.passive_start.textChanged.connect(lambda: self._schedule_validation('passive_start'))
+        self.passive_end.textChanged.connect(lambda: self._schedule_validation('passive_end'))
+    
+    def _schedule_validation(self, field):
+        """Schedule validation with a delay."""
+        # 重新启动定时器
+        self.validation_timer.stop()
+        self.validation_timer.start(500)  # 500ms延迟
+    
+    def _perform_validation(self):
+        """Perform validation on all fields."""
+        # 验证端口
+        port_text = self.port_edit.text()
+        if port_text:
+            try:
+                port = int(port_text)
+                if not (1 <= port <= 65535):
+                    self.port_edit.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
+                else:
+                    self.port_edit.setStyleSheet("")
+            except ValueError:
+                self.port_edit.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
+        else:
+            self.port_edit.setStyleSheet("")
+        
+        # 验证被动端口范围
+        start_text = self.passive_start.text()
+        end_text = self.passive_end.text()
+        
+        if start_text and end_text:
+            try:
+                start = int(start_text)
+                end = int(end_text)
+                if not (1024 <= start <= 65535) or not (1024 <= end <= 65535) or start >= end:
+                    self.passive_start.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
+                    self.passive_end.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
+                else:
+                    self.passive_start.setStyleSheet("")
+                    self.passive_end.setStyleSheet("")
+            except ValueError:
+                self.passive_start.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
+                self.passive_end.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
+        else:
+            self.passive_start.setStyleSheet("")
+            self.passive_end.setStyleSheet("")
+    
     def toggle_passive_fields(self):
         """Enable/disable passive mode fields based on checkbox state."""
         enabled = self.passive_check.isChecked()
@@ -103,7 +159,9 @@ class ConfigPanel(QGroupBox):
             'passive_start': int(self.passive_start.text() or 60000),
             'passive_end': int(self.passive_end.text() or 61000),
             'encoding': 'gbk' if self.encoding_combo.currentIndex() == 0 else 'utf-8',
-            'threading': self.threading_combo.currentIndex() == 1
+            'encoding_idx': self.encoding_combo.currentIndex(),
+            'threading': self.threading_combo.currentIndex() == 1,
+            'threading_idx': self.threading_combo.currentIndex()
         }
     
     def load_config(self, config_data):
