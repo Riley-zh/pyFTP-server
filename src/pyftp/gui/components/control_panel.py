@@ -32,3 +32,12 @@ class ControlPanel(QWidget):
         btn_layout.addWidget(self.clear_log_btn)
         
         self.setLayout(btn_layout)
+    
+    def set_server_running(self, running: bool):
+        """Update UI state based on server running status."""
+        if running:
+            self.start_btn.setText("停止服务器")
+            self.reload_btn.setEnabled(True)
+        else:
+            self.start_btn.setText("启动服务器")
+            self.reload_btn.setEnabled(False)

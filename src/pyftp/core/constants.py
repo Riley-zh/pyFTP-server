@@ -1,0 +1,40 @@
+"""
+Constants for PyFTP server.
+"""
+
+# Default configuration values
+DEFAULT_PORT = 2121
+DEFAULT_DIRECTORY = "."
+DEFAULT_PASSIVE_MODE = True
+DEFAULT_PASSIVE_START = 60000
+DEFAULT_PASSIVE_END = 61000
+DEFAULT_ENCODING_IDX = 0  # 0: GBK, 1: UTF-8
+DEFAULT_THREADING_IDX = 1  # 0: Single-threaded, 1: Multi-threaded
+
+# Log levels
+LOG_LEVEL_ALL = 0
+LOG_LEVEL_INFO = 1
+LOG_LEVEL_WARNING = 2
+LOG_LEVEL_ERROR = 3
+
+# Encoding options
+ENCODING_GBK = "gbk"
+ENCODING_UTF8 = "utf-8"
+ENCODING_OPTIONS = [
+    (0, "GBK (简体中文)", ENCODING_GBK),
+    (1, "UTF-8 (国际)", ENCODING_UTF8)
+]
+
+# Threading options
+THREADING_SINGLE = 0
+THREADING_MULTI = 1
+THREADING_OPTIONS = [
+    (THREADING_SINGLE, "单线程模式"),
+    (THREADING_MULTI, "多线程模式")
+]
+
+# UI constants
+MAX_LOG_LINES = 5000
+VALIDATION_DELAY = 500  # milliseconds
+STATUS_UPDATE_INTERVAL = 1000  # milliseconds
+SERVER_STOP_TIMEOUT = 2.0  # seconds

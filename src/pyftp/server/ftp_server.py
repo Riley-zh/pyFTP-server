@@ -8,10 +8,18 @@ import warnings
 import logging
 from threading import Thread, Event
 from typing import Dict, Any, Optional, Type, Tuple, Union
+from datetime import datetime
 
 from pyftpdlib.authorizers import DummyAuthorizer
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.servers import FTPServer, ThreadedFTPServer
+
+from pyftp.core.interfaces import ServerManager
+from pyftp.core.constants import (
+    DEFAULT_PORT, DEFAULT_DIRECTORY, DEFAULT_PASSIVE_MODE,
+    DEFAULT_PASSIVE_START, DEFAULT_PASSIVE_END
+)
+from pyftp.utils.helpers import is_port_available, is_port_range_available
 
 
 # 抑制不必要的警告
@@ -66,9 +74,9 @@ class CustomFTPHandler(FTPHandler):
         # 获取文件大小信息
         try:
             bytes_sent = os.path.getsize(file)
-        except:
-            bytes_sent = "未知"
-        logging.info(f"文件发送完成: {file} ({bytes_sent} bytes)")
+            logging.info(f"文件发送完成: {file} ({bytes_sent} bytes)")
+        except Exception as e:
+            logging.warning(f"文件发送完成但无法获取大小: {file} (错误: {str(e)})")
 
     def on_file_received(self, file):
         """Callback when a file is received."""
@@ -82,8 +90,12 @@ class CustomFTPHandler(FTPHandler):
         """Callback when an incomplete file is received."""
         logging.warning(f"不完整文件接收: {file}")
 
+    def on_error(self, e):
+        """Callback when an error occurs."""
+        logging.error(f"FTP处理错误: {str(e)}")
 
-class FTPServerManager:
+
+class FTPServerManager(ServerManager):
     """Manager for the FTP server lifecycle."""
     
     def __init__(self):
@@ -93,20 +105,11 @@ class FTPServerManager:
     
     def is_port_available(self, port: int) -> bool:
         """Check if a port is available."""
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            s.bind(("0.0.0.0", port))
-            s.close()
-            return True
-        except:
-            return False
+        return is_port_available(port)
     
     def is_port_range_available(self, start: int, end: int) -> bool:
         """Check if a port range is available."""
-        for port in range(start, end + 1):
-            if not self.is_port_available(port):
-                return False
-        return True
+        return is_port_range_available(start, end)
     
     def is_running(self) -> bool:
         """Check if the server is currently running."""
@@ -121,13 +124,17 @@ class FTPServerManager:
     def start_server(self, config: Dict[str, Any]) -> bool:
         """Start the FTP server with the given configuration."""
         try:
+            # Reset connection count
+            self.active_connections = 0
+            
             authorizer = DummyAuthorizer()
-            authorizer.add_anonymous(config['directory'], perm="elradfmw")
+            directory = config.get('directory', DEFAULT_DIRECTORY)
+            authorizer.add_anonymous(directory, perm="elradfmw")
             
             # Configure the custom handler
             handler = CustomFTPHandler
             handler.authorizer = authorizer
-            handler.encoding = config['encoding']
+            handler.encoding = config.get('encoding', 'utf-8')
             handler.log_prefix = "%(remote_ip)s:%(remote_port)s"
             
             # 设置缓冲区大小以提高性能
@@ -136,15 +143,16 @@ class FTPServerManager:
             handler.banner = "PyFTP Server ready"
             
             # Choose server class based on threading setting
-            server_class = ThreadedFTPServer if config['threading'] else FTPServer
-            self.server_instance = server_class(("0.0.0.0", config['port']), handler)
+            use_threading = config.get('threading', True)
+            server_class = ThreadedFTPServer if use_threading else FTPServer
+            port = config.get('port', DEFAULT_PORT)
+            self.server_instance = server_class(("0.0.0.0", port), handler)
             
             # Set passive ports if enabled
-            if config['passive'] and self.server_instance:
-                self.server_instance.handler.passive_ports = range(
-                    config['passive_start'], 
-                    config['passive_end'] + 1
-                )
+            if config.get('passive', DEFAULT_PASSIVE_MODE) and self.server_instance:
+                passive_start = config.get('passive_start', DEFAULT_PASSIVE_START)
+                passive_end = config.get('passive_end', DEFAULT_PASSIVE_END)
+                self.server_instance.handler.passive_ports = range(passive_start, passive_end + 1)
             
             # 优化服务器配置以提高性能
             self.server_instance.max_cons = 512  # 增加最大连接数
@@ -154,9 +162,12 @@ class FTPServerManager:
             self.ftp_server_thread = FTPServerThread(self.server_instance)
             self.ftp_server_thread.start()
             
-            if config['passive']:
-                logging.info(f"被动模式已启用 - 端口范围: {config['passive_start']}-{config['passive_end']}")
+            if config.get('passive', DEFAULT_PASSIVE_MODE):
+                passive_start = config.get('passive_start', DEFAULT_PASSIVE_START)
+                passive_end = config.get('passive_end', DEFAULT_PASSIVE_END)
+                logging.info(f"被动模式已启用 - 端口范围: {passive_start}-{passive_end}")
             
+            logging.info(f"FTP服务器启动成功 - 端口: {port}, 目录: {directory}")
             return True
         except Exception as e:
             logging.error(f"启动服务器失败: {str(e)}")
@@ -177,6 +188,7 @@ class FTPServerManager:
                 self.ftp_server_thread = None
                 self.server_instance = None
                 self.active_connections = 0
+                logging.info("FTP服务器已停止")
                 return True
             except Exception as e:
                 logging.error(f"停止服务器失败: {str(e)}")

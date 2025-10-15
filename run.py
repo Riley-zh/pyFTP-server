@@ -5,6 +5,7 @@ Simple run script to test the refactored PyFTP server application.
 
 import sys
 import os
+from typing import NoReturn
 
 # Add src directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))

@@ -6,13 +6,14 @@ Main entry point for the PyFTP server application.
 import sys
 import os
 import logging
+from typing import NoReturn
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
 
 from pyftp.gui.window import FTPWindow
 
 
-def main():
+def main() -> NoReturn:
     """Main application entry point."""
     # 设置高DPI支持
     # 修复: 使用getattr安全地访问属性

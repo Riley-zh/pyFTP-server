@@ -11,6 +11,7 @@ import socket
 from threading import Thread, Event
 from datetime import datetime
 from typing import Dict, Any
+from pathlib import Path
 
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -18,6 +19,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QTimer, pyqtSignal
 from PyQt5.QtGui import QTextCursor
+from PyQt5.QtCore import QEvent
 
 from pyftp.gui.components.config_panel import ConfigPanel
 from pyftp.gui.components.control_panel import ControlPanel
@@ -25,6 +27,8 @@ from pyftp.gui.components.log_panel import LogPanel
 from pyftp.gui.components.user_panel import UserPanel
 from pyftp.server.ftp_server import FTPServerManager
 from pyftp.config.manager import ConfigManager
+from pyftp.core.constants import STATUS_UPDATE_INTERVAL
+from pyftp.core.interfaces import ServerManager, ConfigManager as ConfigManagerInterface
 
 
 # 抑制不必要的警告
@@ -38,8 +42,8 @@ class FTPWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.config_file = "ftpserver.ini"
-        self.config_manager = ConfigManager(self.config_file)
-        self.ftp_server_manager = FTPServerManager()
+        self.config_manager: ConfigManagerInterface = ConfigManager(self.config_file)
+        self.ftp_server_manager: ServerManager = FTPServerManager()
         
         # 用于异步操作的定时器
         self.status_update_timer = QTimer()
@@ -48,9 +52,10 @@ class FTPWindow(QMainWindow):
         self.setup_ui()
         self.setup_logging()
         self.load_config()
+        self.connect_signals()
         
         # 启动状态更新定时器
-        self.status_update_timer.start(1000)  # 每秒更新一次状态
+        self.status_update_timer.start(STATUS_UPDATE_INTERVAL)  # 每秒更新一次状态
     
     def setup_ui(self):
         """Setup the user interface."""
@@ -72,15 +77,10 @@ class FTPWindow(QMainWindow):
         
         # 控制按钮面板
         self.control_panel = ControlPanel()
-        self.control_panel.start_btn.clicked.connect(self.toggle_server)
-        self.control_panel.save_btn.clicked.connect(self.save_config)
-        self.control_panel.reload_btn.clicked.connect(self.reload_config)
-        self.control_panel.clear_log_btn.clicked.connect(self.clear_log)
         main_layout.addWidget(self.control_panel)
         
         # 日志显示面板
         self.log_panel = LogPanel()
-        self.log_panel.log_level_combo.currentIndexChanged.connect(self.filter_logs)
         main_layout.addWidget(self.log_panel)
         
         # 状态栏
@@ -90,6 +90,26 @@ class FTPWindow(QMainWindow):
         
         # 初始化被动模式字段状态
         self.config_panel.toggle_passive_fields()
+    
+    def connect_signals(self):
+        """Connect UI signals to handlers."""
+        # Config panel signals
+        self.config_panel.directory_browse_requested.connect(self.browse_dir)
+        self.config_panel.config_changed.connect(self.on_config_changed)
+        
+        # Control panel signals
+        self.control_panel.start_btn.clicked.connect(self.toggle_server)
+        self.control_panel.save_btn.clicked.connect(self.save_config)
+        self.control_panel.reload_btn.clicked.connect(self.reload_config)
+        self.control_panel.clear_log_btn.clicked.connect(self.clear_log)
+        
+        # Log panel signals
+        self.log_panel.log_level_combo.currentIndexChanged.connect(self.filter_logs)
+    
+    def on_config_changed(self):
+        """Handle configuration changes."""
+        # Could be used to enable/disable save button or show unsaved changes indicator
+        pass
     
     def setup_logging(self):
         """Setup logging for the application."""
@@ -108,16 +128,10 @@ class FTPWindow(QMainWindow):
         self.log_handler.log_signal.connect(self.append_log)
         root_logger.addHandler(self.log_handler)
         
-        # 设置pyftpdlib的日志级别并添加我们的处理器
+        # 设置pyftpdlib的日志级别，但它会继承根日志记录器的处理器
+        # 不需要再单独添加处理器，避免重复日志
         ftp_logger = logging.getLogger('pyftpdlib')
         ftp_logger.setLevel(logging.INFO)
-        
-        # 移除pyftpdlib的所有现有处理器
-        for handler in ftp_logger.handlers[:]:
-            ftp_logger.removeHandler(handler)
-            
-        # 添加我们的处理器
-        ftp_logger.addHandler(self.log_handler)
         
         # 记录一条测试日志，确认日志系统工作正常
         logging.info("日志系统初始化完成")
@@ -139,7 +153,7 @@ class FTPWindow(QMainWindow):
         """Open directory browser."""
         directory = QFileDialog.getExistingDirectory(self, "选择FTP根目录")
         if directory:
-            self.config_panel.dir_edit.setText(directory)
+            self.config_panel.dir_edit.setText(str(Path(directory)))
     
     def load_config(self):
         """Load configuration from file."""
@@ -185,8 +199,22 @@ class FTPWindow(QMainWindow):
                           f"连接数: {conn_count}")
             self.status_bar.showMessage(status_text)
     
+    def validate_config(self):
+        """Validate current configuration."""
+        errors = self.config_panel.validate_config()
+        if errors:
+            error_msg = "\n".join(errors)
+            logging.error(f"配置验证失败:\n{error_msg}")
+            QMessageBox.critical(self, "配置错误", f"配置验证失败:\n{error_msg}")
+            return False
+        return True
+    
     def start_server(self):
         """Start the FTP server."""
+        # Validate configuration first
+        if not self.validate_config():
+            return False
+        
         config = self.config_panel.get_config()
         
         if not self.ftp_server_manager.is_port_available(config['port']):
@@ -195,26 +223,15 @@ class FTPWindow(QMainWindow):
             return False
         
         if config['passive']:
-            if config['passive_start'] >= config['passive_end']:
-                logging.error("被动端口范围无效: 起始端口必须小于结束端口")
-                QMessageBox.critical(self, "配置错误", "被动端口范围无效: 起始端口必须小于结束端口")
-                return False
-            
             if not self.ftp_server_manager.is_port_range_available(config['passive_start'], config['passive_end']):
                 logging.error("被动端口范围已被占用或不可用")
                 QMessageBox.critical(self, "端口冲突", "被动端口范围已被占用或不可用")
                 return False
         
-        if not os.path.isdir(config['directory']):
-            logging.error(f"目录不存在: {config['directory']}")
-            QMessageBox.critical(self, "目录错误", f"目录不存在: {config['directory']}")
-            return False
-        
         try:
             success = self.ftp_server_manager.start_server(config)
             if success:
-                self.control_panel.start_btn.setText("停止服务器")
-                self.control_panel.reload_btn.setEnabled(True)
+                self.control_panel.set_server_running(True)
                 logging.info(f"FTP服务器已启动 ({'多线程' if config['threading'] else '单线程'}模式)")
                 return True
             else:
@@ -231,8 +248,7 @@ class FTPWindow(QMainWindow):
         if self.ftp_server_manager.is_running():
             try:
                 self.ftp_server_manager.stop_server()
-                self.control_panel.start_btn.setText("启动服务器")
-                self.control_panel.reload_btn.setEnabled(False)
+                self.control_panel.set_server_running(False)
                 logging.info("FTP服务器已停止")
                 return True
             except Exception as e:
@@ -252,6 +268,17 @@ class FTPWindow(QMainWindow):
         # 停止状态更新定时器
         self.status_update_timer.stop()
         
+        # 清理日志处理器
+        if hasattr(self, 'log_handler') and self.log_handler:
+            # 从日志记录器中移除处理器
+            root_logger = logging.getLogger()
+            if self.log_handler in root_logger.handlers:
+                root_logger.removeHandler(self.log_handler)
+            
+            # 关闭处理器
+            self.log_handler.close()
+            self.log_handler = None
+        
         # 停止FTP服务器
         if self.ftp_server_manager.is_running():
             reply = QMessageBox.question(
@@ -261,10 +288,13 @@ class FTPWindow(QMainWindow):
             
             if reply == QMessageBox.Yes:
                 self.stop_server()
-                a0.accept()
+                if a0:
+                    a0.accept()
             else:
-                a0.ignore()
+                if a0:
+                    a0.ignore()
                 # 重新启动状态更新定时器
-                self.status_update_timer.start(1000)
+                self.status_update_timer.start(STATUS_UPDATE_INTERVAL)
         else:
-            a0.accept()
+            if a0:
+                a0.accept()
