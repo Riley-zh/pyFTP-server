@@ -19,7 +19,11 @@ from pyftp.core.constants import (
     DEFAULT_PORT, DEFAULT_DIRECTORY, DEFAULT_PASSIVE_MODE,
     DEFAULT_PASSIVE_START, DEFAULT_PASSIVE_END
 )
-from pyftp.utils.helpers import is_port_available, is_port_range_available
+from pyftp.core.exceptions import ServerError, ValidationError
+from pyftp.server.validators import (
+    validate_port, validate_port_range, validate_passive_port_range,
+    validate_server_directory, is_port_available, is_port_range_available
+)
 
 
 # 抑制不必要的警告
@@ -104,26 +108,71 @@ class FTPServerManager(ServerManager):
         self.active_connections = 0  # 跟踪活动连接数
     
     def is_port_available(self, port: int) -> bool:
-        """Check if a port is available."""
+        """Check if a port is available.
+        
+        Args:
+            port: Port number to check
+            
+        Returns:
+            True if port is available, False otherwise
+        """
+        try:
+            validate_port(port)
+        except ValidationError:
+            return False
         return is_port_available(port)
     
     def is_port_range_available(self, start: int, end: int) -> bool:
-        """Check if a port range is available."""
+        """Check if a port range is available.
+        
+        Args:
+            start: Start port number (inclusive)
+            end: End port number (inclusive)
+            
+        Returns:
+            True if all ports in range are available, False otherwise
+        """
+        try:
+            validate_port_range(start, end)
+        except ValidationError:
+            return False
         return is_port_range_available(start, end)
     
     def is_running(self) -> bool:
-        """Check if the server is currently running."""
+        """Check if the server is currently running.
+        
+        Returns:
+            True if server is running, False otherwise
+        """
         if self.ftp_server_thread is None:
             return False
         return self.ftp_server_thread.is_alive()
     
     def get_connection_count(self) -> int:
-        """Get the number of active connections."""
+        """Get the number of active connections.
+        
+        Returns:
+            Number of active connections
+        """
         return self.active_connections
     
     def start_server(self, config: Dict[str, Any]) -> bool:
-        """Start the FTP server with the given configuration."""
+        """Start the FTP server with the given configuration.
+        
+        Args:
+            config: Server configuration dictionary
+            
+        Returns:
+            True if server started successfully, False otherwise
+            
+        Raises:
+            ServerError: If there's an error starting the server
+            ValidationError: If configuration validation fails
+        """
         try:
+            # Validate configuration
+            self._validate_config(config)
+            
             # Reset connection count
             self.active_connections = 0
             
@@ -171,10 +220,40 @@ class FTPServerManager(ServerManager):
             return True
         except Exception as e:
             logging.error(f"启动服务器失败: {str(e)}")
-            return False
+            raise ServerError(f"启动服务器失败: {str(e)}")
+    
+    def _validate_config(self, config: Dict[str, Any]) -> None:
+        """Validate server configuration.
+        
+        Args:
+            config: Server configuration dictionary
+            
+        Raises:
+            ValidationError: If configuration validation fails
+        """
+        if not config:
+            raise ValidationError("服务器配置不能为空")
+            
+        # Validate port
+        port = config.get('port', DEFAULT_PORT)
+        validate_port(port)
+        
+        # Validate directory
+        directory = config.get('directory', DEFAULT_DIRECTORY)
+        validate_server_directory(directory)
+        
+        # Validate passive mode settings
+        if config.get('passive', DEFAULT_PASSIVE_MODE):
+            passive_start = config.get('passive_start', DEFAULT_PASSIVE_START)
+            passive_end = config.get('passive_end', DEFAULT_PASSIVE_END)
+            validate_passive_port_range(passive_start, passive_end)
     
     def stop_server(self) -> bool:
-        """Stop the FTP server."""
+        """Stop the FTP server.
+        
+        Returns:
+            True if server stopped successfully or was not running, False on error
+        """
         if self.is_running() and self.ftp_server_thread is not None:
             try:
                 self.ftp_server_thread.stop()

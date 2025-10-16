@@ -10,12 +10,23 @@ from pathlib import Path
 from pyftp.core.interfaces import ServerManager, ConfigManager
 from pyftp.server.ftp_server import FTPServerManager
 from pyftp.config.manager import ConfigManager as ConfigManagerImpl
+from pyftp.core.constants import (
+    DEFAULT_PORT, DEFAULT_DIRECTORY, DEFAULT_PASSIVE_MODE,
+    DEFAULT_PASSIVE_START, DEFAULT_PASSIVE_END, 
+    DEFAULT_ENCODING_IDX, DEFAULT_THREADING_IDX
+)
+from pyftp.core.exceptions import PyFTPError, ConfigError, ServerError
 
 
 class PyFTPApplication:
     """Main application class that coordinates all components."""
     
     def __init__(self, config_file: str = "ftpserver.ini"):
+        """Initialize the PyFTP application.
+        
+        Args:
+            config_file: Path to the configuration file
+        """
         self.config_file = config_file
         self.config_manager: ConfigManager = ConfigManagerImpl(config_file)
         self.server_manager: ServerManager = FTPServerManager()
@@ -44,7 +55,7 @@ class PyFTPApplication:
             logging.error(f"应用程序初始化失败: {str(e)}")
             return False
     
-    def _setup_logging(self):
+    def _setup_logging(self) -> None:
         """Setup application logging."""
         # Logging is typically setup in the GUI, but we ensure it's configured
         root_logger = logging.getLogger()
@@ -55,11 +66,14 @@ class PyFTPApplication:
                 datefmt='%Y-%m-%d %H:%M:%S'
             )
     
-    def _load_configuration(self):
+    def _load_configuration(self) -> None:
         """Load application configuration."""
-        config_data = self.config_manager.load_config()
-        if not config_data:
-            logging.info("未找到配置文件，使用默认配置")
+        try:
+            config_data = self.config_manager.load_config()
+            if not config_data:
+                logging.info("未找到配置文件，使用默认配置")
+        except ConfigError as e:
+            logging.error(f"配置加载失败: {str(e)}")
     
     def get_config(self) -> Optional[Dict[str, Any]]:
         """Get current configuration.
@@ -67,7 +81,11 @@ class PyFTPApplication:
         Returns:
             Current configuration dictionary or None if not loaded
         """
-        return self.config_manager.load_config()
+        try:
+            return self.config_manager.load_config()
+        except ConfigError as e:
+            logging.error(f"配置获取失败: {str(e)}")
+            return None
     
     def save_config(self, config_data: Dict[str, Any]) -> bool:
         """Save configuration.
@@ -78,7 +96,11 @@ class PyFTPApplication:
         Returns:
             True if successful, False otherwise
         """
-        return self.config_manager.save_config(config_data)
+        try:
+            return self.config_manager.save_config(config_data)
+        except (ConfigError, PyFTPError) as e:
+            logging.error(f"配置保存失败: {str(e)}")
+            return False
     
     def start_server(self, config: Dict[str, Any]) -> bool:
         """Start the FTP server.
@@ -89,7 +111,11 @@ class PyFTPApplication:
         Returns:
             True if server started successfully, False otherwise
         """
-        return self.server_manager.start_server(config)
+        try:
+            return self.server_manager.start_server(config)
+        except (ServerError, PyFTPError) as e:
+            logging.error(f"服务器启动失败: {str(e)}")
+            return False
     
     def stop_server(self) -> bool:
         """Stop the FTP server.
@@ -97,7 +123,11 @@ class PyFTPApplication:
         Returns:
             True if server stopped successfully or was not running, False on error
         """
-        return self.server_manager.stop_server()
+        try:
+            return self.server_manager.stop_server()
+        except PyFTPError as e:
+            logging.error(f"服务器停止失败: {str(e)}")
+            return False
     
     def is_server_running(self) -> bool:
         """Check if the FTP server is running.
@@ -153,12 +183,6 @@ class PyFTPApplication:
         Returns:
             True if successful, False otherwise
         """
-        # Use the actual method if available, otherwise fallback
-        from pyftp.core.constants import (
-            DEFAULT_PORT, DEFAULT_DIRECTORY, DEFAULT_PASSIVE_MODE,
-            DEFAULT_PASSIVE_START, DEFAULT_PASSIVE_END, 
-            DEFAULT_ENCODING_IDX, DEFAULT_THREADING_IDX
-        )
         default_config = {
             'port': DEFAULT_PORT,
             'directory': DEFAULT_DIRECTORY,
@@ -168,4 +192,4 @@ class PyFTPApplication:
             'encoding_idx': DEFAULT_ENCODING_IDX,
             'threading_idx': DEFAULT_THREADING_IDX
         }
-        return self.config_manager.save_config(default_config)
+        return self.save_config(default_config)

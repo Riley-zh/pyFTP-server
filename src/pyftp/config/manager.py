@@ -12,8 +12,11 @@ from pyftp.core.interfaces import ConfigManager as ConfigManagerInterface
 from pyftp.core.constants import (
     DEFAULT_PORT, DEFAULT_DIRECTORY, DEFAULT_PASSIVE_MODE,
     DEFAULT_PASSIVE_START, DEFAULT_PASSIVE_END, 
-    DEFAULT_ENCODING_IDX, DEFAULT_THREADING_IDX
+    DEFAULT_ENCODING_IDX, DEFAULT_THREADING_IDX,
+    MIN_PORT, MAX_PORT, MIN_PASSIVE_PORT, MAX_PASSIVE_PORT
 )
+from pyftp.core.exceptions import ConfigError
+from pyftp.utils.helpers import validate_directory
 
 
 class ConfigManager(ConfigManagerInterface):
@@ -38,6 +41,9 @@ class ConfigManager(ConfigManagerInterface):
         
         Returns:
             Dict with configuration data or None if file doesn't exist
+            
+        Raises:
+            ConfigError: If there's an error parsing the configuration file
         """
         if not self.config_file.exists():
             logging.info(f"配置文件不存在: {self.config_file}")
@@ -78,10 +84,10 @@ class ConfigManager(ConfigManagerInterface):
                 return None
         except configparser.Error as e:
             logging.error(f"解析配置文件失败: {str(e)}")
-            return None
+            raise ConfigError(f"解析配置文件失败: {str(e)}")
         except Exception as e:
             logging.error(f"加载配置失败: {str(e)}")
-            return None
+            raise ConfigError(f"加载配置失败: {str(e)}")
     
     def _parse_int_value(self, value: str, default: int) -> int:
         """Parse string value to int, handling both string and int representations."""
@@ -108,7 +114,13 @@ class ConfigManager(ConfigManagerInterface):
             
         Returns:
             True if successful, False otherwise
+            
+        Raises:
+            ConfigError: If there's an error saving the configuration file
         """
+        # 验证配置数据
+        self._validate_config(config_data)
+        
         config = configparser.ConfigParser()
         
         try:
@@ -148,7 +160,43 @@ class ConfigManager(ConfigManagerInterface):
             return True
         except Exception as e:
             logging.error(f"保存配置失败: {str(e)}")
-            return False
+            raise ConfigError(f"保存配置失败: {str(e)}")
+    
+    def _validate_config(self, config_data: Dict[str, Any]) -> None:
+        """Validate configuration data.
+        
+        Args:
+            config_data: Configuration data to validate
+            
+        Raises:
+            ConfigError: If validation fails
+        """
+        if not config_data:
+            raise ConfigError("配置数据不能为空")
+            
+        # 验证端口
+        port = config_data.get('port', DEFAULT_PORT)
+        if not isinstance(port, int) or not (MIN_PORT <= port <= MAX_PORT):
+            raise ConfigError(f"端口必须是 {MIN_PORT}-{MAX_PORT} 范围内的整数")
+            
+        # 验证目录
+        directory = config_data.get('directory', DEFAULT_DIRECTORY)
+        if not validate_directory(directory):
+            raise ConfigError(f"目录不存在或无法访问: {directory}")
+            
+        # 验证被动模式设置
+        if config_data.get('passive', DEFAULT_PASSIVE_MODE):
+            passive_start = config_data.get('passive_start', DEFAULT_PASSIVE_START)
+            passive_end = config_data.get('passive_end', DEFAULT_PASSIVE_END)
+            
+            if not isinstance(passive_start, int) or not (MIN_PASSIVE_PORT <= passive_start <= MAX_PASSIVE_PORT):
+                raise ConfigError(f"被动起始端口必须是 {MIN_PASSIVE_PORT}-{MAX_PASSIVE_PORT} 范围内的整数")
+                
+            if not isinstance(passive_end, int) or not (MIN_PASSIVE_PORT <= passive_end <= MAX_PASSIVE_PORT):
+                raise ConfigError(f"被动结束端口必须是 {MIN_PASSIVE_PORT}-{MAX_PASSIVE_PORT} 范围内的整数")
+                
+            if passive_start >= passive_end:
+                raise ConfigError("被动端口范围无效: 起始端口必须小于结束端口")
     
     def reset_to_defaults(self) -> bool:
         """Reset configuration to default values and save to file.
@@ -156,7 +204,10 @@ class ConfigManager(ConfigManagerInterface):
         Returns:
             True if successful, False otherwise
         """
-        return self.save_config(self.DEFAULT_CONFIG)
+        try:
+            return self.save_config(self.DEFAULT_CONFIG)
+        except ConfigError:
+            return False
     
     def get_config_path(self) -> Path:
         """Get the configuration file path.

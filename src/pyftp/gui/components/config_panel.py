@@ -13,9 +13,11 @@ from PyQt5.QtGui import QIntValidator
 from pyftp.core.constants import (
     DEFAULT_PORT, DEFAULT_DIRECTORY, DEFAULT_PASSIVE_MODE,
     DEFAULT_PASSIVE_START, DEFAULT_PASSIVE_END, 
-    ENCODING_OPTIONS, THREADING_OPTIONS
+    ENCODING_OPTIONS, THREADING_OPTIONS,
+    MIN_PORT, MAX_PORT, MIN_PASSIVE_PORT, MAX_PASSIVE_PORT
 )
 from pyftp.utils.helpers import validate_directory
+from pyftp.core.exceptions import ValidationError
 
 
 class ConfigPanel(QGroupBox):
@@ -115,9 +117,9 @@ class ConfigPanel(QGroupBox):
     def _setup_validators(self):
         """Setup input validators with delayed validation."""
         # 使用定时器延迟验证，避免用户输入时频繁验证
-        self.port_validator = QIntValidator(1, 65535)
-        self.passive_start_validator = QIntValidator(1024, 65535)
-        self.passive_end_validator = QIntValidator(1024, 65535)
+        self.port_validator = QIntValidator(MIN_PORT, MAX_PORT)
+        self.passive_start_validator = QIntValidator(MIN_PASSIVE_PORT, MAX_PASSIVE_PORT)
+        self.passive_end_validator = QIntValidator(MIN_PASSIVE_PORT, MAX_PASSIVE_PORT)
         
         # 定时器用于延迟验证
         self.validation_timer = QTimer()
@@ -142,7 +144,7 @@ class ConfigPanel(QGroupBox):
         if port_text:
             try:
                 port = int(port_text)
-                if not (1 <= port <= 65535):
+                if not (MIN_PORT <= port <= MAX_PORT):
                     self.port_edit.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
                 else:
                     self.port_edit.setStyleSheet("")
@@ -159,7 +161,7 @@ class ConfigPanel(QGroupBox):
             try:
                 start = int(start_text)
                 end = int(end_text)
-                if not (1024 <= start <= 65535) or not (1024 <= end <= 65535) or start >= end:
+                if not (MIN_PASSIVE_PORT <= start <= MAX_PASSIVE_PORT) or not (MIN_PASSIVE_PORT <= end <= MAX_PASSIVE_PORT) or start >= end:
                     self.passive_start.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
                     self.passive_end.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
                 else:
@@ -216,8 +218,8 @@ class ConfigPanel(QGroupBox):
         config = self.get_config()
         
         # Validate port
-        if not (1 <= config['port'] <= 65535):
-            errors.append(f"端口 {config['port']} 无效，必须在 1-65535 范围内")
+        if not (MIN_PORT <= config['port'] <= MAX_PORT):
+            errors.append(f"端口 {config['port']} 无效，必须在 {MIN_PORT}-{MAX_PORT} 范围内")
         
         # Validate directory
         if not validate_directory(config['directory']):
@@ -225,10 +227,10 @@ class ConfigPanel(QGroupBox):
         
         # Validate passive mode settings
         if config['passive']:
-            if not (1024 <= config['passive_start'] <= 65535):
-                errors.append(f"被动起始端口 {config['passive_start']} 无效")
-            if not (1024 <= config['passive_end'] <= 65535):
-                errors.append(f"被动结束端口 {config['passive_end']} 无效")
+            if not (MIN_PASSIVE_PORT <= config['passive_start'] <= MAX_PASSIVE_PORT):
+                errors.append(f"被动起始端口 {config['passive_start']} 无效，必须在 {MIN_PASSIVE_PORT}-{MAX_PASSIVE_PORT} 范围内")
+            if not (MIN_PASSIVE_PORT <= config['passive_end'] <= MAX_PASSIVE_PORT):
+                errors.append(f"被动结束端口 {config['passive_end']} 无效，必须在 {MIN_PASSIVE_PORT}-{MAX_PASSIVE_PORT} 范围内")
             if config['passive_start'] >= config['passive_end']:
                 errors.append("被动端口范围无效: 起始端口必须小于结束端口")
         

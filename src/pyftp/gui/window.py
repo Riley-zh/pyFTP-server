@@ -29,6 +29,8 @@ from pyftp.server.ftp_server import FTPServerManager
 from pyftp.config.manager import ConfigManager
 from pyftp.core.constants import STATUS_UPDATE_INTERVAL
 from pyftp.core.interfaces import ServerManager, ConfigManager as ConfigManagerInterface
+from pyftp.core.exceptions import PyFTPError, ConfigError, ServerError, ValidationError
+from pyftp.server.logger import QtLogHandler
 
 
 # 抑制不必要的警告
@@ -113,8 +115,6 @@ class FTPWindow(QMainWindow):
     
     def setup_logging(self):
         """Setup logging for the application."""
-        from pyftp.server.logger import QtLogHandler
-        
         # 获取根日志记录器并移除所有现有的处理器
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.INFO)
@@ -157,23 +157,31 @@ class FTPWindow(QMainWindow):
     
     def load_config(self):
         """Load configuration from file."""
-        config_data = self.config_manager.load_config()
-        if config_data:
-            self.config_panel.load_config(config_data)
-            logging.info("配置文件已加载")
-        else:
-            logging.warning("配置文件不存在，使用默认配置")
-            # 创建默认配置
-            self.save_config()
+        try:
+            config_data = self.config_manager.load_config()
+            if config_data:
+                self.config_panel.load_config(config_data)
+                logging.info("配置文件已加载")
+            else:
+                logging.warning("配置文件不存在，使用默认配置")
+                # 创建默认配置
+                self.save_config()
+        except ConfigError as e:
+            logging.error(f"配置加载失败: {str(e)}")
+            QMessageBox.critical(self, "配置错误", f"配置加载失败: {str(e)}")
     
     def save_config(self):
         """Save current configuration to file."""
-        config_data = self.config_panel.get_config()
-        success = self.config_manager.save_config(config_data)
-        if success:
-            logging.info("配置保存成功")
-        else:
-            logging.error("保存配置失败")
+        try:
+            config_data = self.config_panel.get_config()
+            success = self.config_manager.save_config(config_data)
+            if success:
+                logging.info("配置保存成功")
+            else:
+                logging.error("保存配置失败")
+        except (ConfigError, ValidationError) as e:
+            logging.error(f"配置保存失败: {str(e)}")
+            QMessageBox.critical(self, "配置错误", f"配置保存失败: {str(e)}")
     
     def reload_config(self):
         """Reload configuration and restart server if running."""
@@ -217,18 +225,18 @@ class FTPWindow(QMainWindow):
         
         config = self.config_panel.get_config()
         
-        if not self.ftp_server_manager.is_port_available(config['port']):
-            logging.error(f"端口 {config['port']} 已被占用，请选择其他端口")
-            QMessageBox.critical(self, "端口冲突", f"端口 {config['port']} 已被占用，请选择其他端口")
-            return False
-        
-        if config['passive']:
-            if not self.ftp_server_manager.is_port_range_available(config['passive_start'], config['passive_end']):
-                logging.error("被动端口范围已被占用或不可用")
-                QMessageBox.critical(self, "端口冲突", "被动端口范围已被占用或不可用")
-                return False
-        
         try:
+            if not self.ftp_server_manager.is_port_available(config['port']):
+                logging.error(f"端口 {config['port']} 已被占用，请选择其他端口")
+                QMessageBox.critical(self, "端口冲突", f"端口 {config['port']} 已被占用，请选择其他端口")
+                return False
+            
+            if config['passive']:
+                if not self.ftp_server_manager.is_port_range_available(config['passive_start'], config['passive_end']):
+                    logging.error("被动端口范围已被占用或不可用")
+                    QMessageBox.critical(self, "端口冲突", "被动端口范围已被占用或不可用")
+                    return False
+            
             success = self.ftp_server_manager.start_server(config)
             if success:
                 self.control_panel.set_server_running(True)
@@ -238,20 +246,28 @@ class FTPWindow(QMainWindow):
                 logging.error("启动服务器失败")
                 QMessageBox.critical(self, "服务器错误", "启动服务器失败")
                 return False
-        except Exception as e:
+        except (ServerError, ValidationError) as e:
             logging.error(f"启动服务器失败: {str(e)}")
             QMessageBox.critical(self, "服务器错误", f"启动服务器失败: {str(e)}")
+            return False
+        except Exception as e:
+            logging.error(f"启动服务器时发生未知错误: {str(e)}")
+            QMessageBox.critical(self, "服务器错误", f"启动服务器时发生未知错误: {str(e)}")
             return False
     
     def stop_server(self):
         """Stop the FTP server."""
         if self.ftp_server_manager.is_running():
             try:
-                self.ftp_server_manager.stop_server()
-                self.control_panel.set_server_running(False)
-                logging.info("FTP服务器已停止")
-                return True
-            except Exception as e:
+                success = self.ftp_server_manager.stop_server()
+                if success:
+                    self.control_panel.set_server_running(False)
+                    logging.info("FTP服务器已停止")
+                    return True
+                else:
+                    logging.error("停止服务器失败")
+                    return False
+            except PyFTPError as e:
                 logging.error(f"停止服务器失败: {str(e)}")
                 return False
         return True
@@ -287,9 +303,15 @@ class FTPWindow(QMainWindow):
             )
             
             if reply == QMessageBox.Yes:
-                self.stop_server()
-                if a0:
-                    a0.accept()
+                success = self.stop_server()
+                if success:
+                    if a0:
+                        a0.accept()
+                else:
+                    if a0:
+                        a0.ignore()
+                    # 重新启动状态更新定时器
+                    self.status_update_timer.start(STATUS_UPDATE_INTERVAL)
             else:
                 if a0:
                     a0.ignore()
