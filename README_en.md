@@ -6,15 +6,16 @@ A graphical FTP server application built with PyQt5 and pyftpdlib.
 
 - 🖥️ Graphical user interface for easy FTP server management
 - ⚙️ Configurable server settings:
-  - Port number
+  - Port number (default: 2121)
   - Root directory
-  - Passive mode with customizable port range
+  - Passive mode with customizable port range (default: 60000-61000)
   - Encoding (GBK for Chinese or UTF-8)
   - Threading mode (single or multi-threaded)
 - 📝 Real-time logging with level filtering
 - 💾 Configuration saving and loading
 - 🔄 Hot reload of server configuration
 - 📊 Status bar showing server status and configuration
+- 👥 Connection counter showing current connections
 
 ## Installation
 
@@ -43,6 +44,12 @@ pyftp
 ```
 
 Or directly from the source directory:
+
+```bash
+python run.py
+```
+
+Or:
 
 ```bash
 python -m src.pyftp.main
@@ -85,11 +92,24 @@ python -m src.pyftp.main
 ```
 pyFTP-server/
 ├── README.md
+├── README_en.md
 ├── pyproject.toml
+├── run.py
+├── ftpserver.ini
 ├── src/
 │   └── pyftp/
 │       ├── __init__.py
 │       ├── main.py
+│       ├── application.py
+│       ├── test_refactor.py
+│       ├── core/
+│       │   ├── __init__.py
+│       │   ├── base_service.py
+│       │   ├── qt_base_service.py
+│       │   ├── constants.py
+│       │   ├── interfaces.py
+│       │   ├── exceptions.py
+│       │   ├── error_handler.py
 │       ├── gui/
 │       │   ├── __init__.py
 │       │   ├── window.py
@@ -102,13 +122,16 @@ pyFTP-server/
 │       ├── server/
 │       │   ├── __init__.py
 │       │   ├── ftp_server.py
-│       │   └── logger.py
-│       └── config/
+│       │   ├── logger.py
+│       │   ├── connection_counter.py
+│       │   ├── port_cache.py
+│       │   ├── validators.py
+│       ├── config/
+│       │   ├── __init__.py
+│       │   └── manager.py
+│       └── utils/
 │           ├── __init__.py
-│           └── manager.py
-└── tests/
-    ├── __init__.py
-    └── test_config.py
+│           └── helpers.py
 ```
 
 ### Setting up development environment
@@ -116,12 +139,12 @@ pyFTP-server/
 ```bash
 # Using venv (standard Python approach)
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+.venv\Scripts\activate  # On Windows
 pip install -e .
 
 # Using uv (faster approach)
 uv venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+.venv\Scripts\activate  # On Windows
 uv pip install -e .
 ```
 

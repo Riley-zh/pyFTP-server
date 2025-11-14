@@ -6,15 +6,16 @@
 
 - 🖥️ 图形用户界面，便于管理 FTP 服务器
 - ⚙️ 可配置的服务器设置：
-  - 端口号
+  - 端口号（默认：2121）
   - 根目录
-  - 被动模式及自定义端口范围
+  - 被动模式及自定义端口范围（默认：60000-61000）
   - 编码设置（GBK 或 UTF-8）
   - 线程模式（单线程或多线程）
 - 📝 实时日志显示与级别过滤
 - 💾 配置保存与加载
 - 🔄 热重载服务器配置
 - 📊 状态栏显示服务器状态和配置信息
+- 👥 连接计数器显示当前连接数
 
 ## 安装
 
@@ -43,6 +44,12 @@ pyftp
 ```
 
 或者直接从源代码目录运行：
+
+```bash
+python run.py
+```
+
+或者：
 
 ```bash
 python -m src.pyftp.main
@@ -85,11 +92,24 @@ python -m src.pyftp.main
 ```
 pyFTP-server/
 ├── README.md
+├── README_en.md
 ├── pyproject.toml
+├── run.py
+├── ftpserver.ini
 ├── src/
 │   └── pyftp/
 │       ├── __init__.py
 │       ├── main.py
+│       ├── application.py
+│       ├── test_refactor.py
+│       ├── core/
+│       │   ├── __init__.py
+│       │   ├── base_service.py
+│       │   ├── qt_base_service.py
+│       │   ├── constants.py
+│       │   ├── interfaces.py
+│       │   ├── exceptions.py
+│       │   ├── error_handler.py
 │       ├── gui/
 │       │   ├── __init__.py
 │       │   ├── window.py
@@ -102,13 +122,16 @@ pyFTP-server/
 │       ├── server/
 │       │   ├── __init__.py
 │       │   ├── ftp_server.py
-│       │   └── logger.py
-│       └── config/
+│       │   ├── logger.py
+│       │   ├── connection_counter.py
+│       │   ├── port_cache.py
+│       │   ├── validators.py
+│       ├── config/
+│       │   ├── __init__.py
+│       │   └── manager.py
+│       └── utils/
 │           ├── __init__.py
-│           └── manager.py
-└── tests/
-    ├── __init__.py
-    └── test_config.py
+│           └── helpers.py
 ```
 
 ### 设置开发环境
@@ -116,12 +139,12 @@ pyFTP-server/
 ```bash
 # 使用 venv（标准 Python 方法）
 python -m venv .venv
-source .venv/bin/activate  # Windows 上使用: .venv\Scripts\activate
+.venv\Scripts\activate  # Windows 上使用
 pip install -e .
 
 # 使用 uv（更快的方法）
 uv venv .venv
-source .venv/bin/activate  # Windows 上使用: .venv\Scripts\activate
+.venv\Scripts\activate  # Windows 上使用
 uv pip install -e .
 ```
 
