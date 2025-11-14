@@ -130,11 +130,11 @@ class ConfigManager(ConfigManagerInterface):
                 elif key == 'encoding':
                     # 保存编码索引而不是编码字符串
                     encoding_idx = config_data.get('encoding_idx', 0)
-                    config.set('server', 'encoding', str(encoding_idx))
+                    config.set('server', 'encoding_idx', str(encoding_idx))
                 elif key == 'threading':
                     # 保存线程模式索引而不是布尔值
                     threading_idx = config_data.get('threading_idx', 1)
-                    config.set('server', 'threading', str(threading_idx))
+                    config.set('server', 'threading_idx', str(threading_idx))
                 elif isinstance(value, bool):
                     config.set('server', key, str(value).lower())
                 else:

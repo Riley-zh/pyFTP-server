@@ -204,7 +204,7 @@ class FTPWindow(QMainWindow):
             conn_count = self.connection_counter.get_count()
             status_text = (f"服务器运行中: 端口 {config['port']}, "
                           f"目录 {config['directory']}, "
-                          f"编码 {config['encoding'].upper()}, "
+                          f"编码 {config['encoding']}, "
                           f"{'多线程' if config['threading'] else '单线程'}模式, "
                           f"连接数: {conn_count}")
             self.status_bar.showMessage(status_text)
