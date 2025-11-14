@@ -24,6 +24,7 @@ from pyftp.server.validators import (
     validate_port, validate_port_range, validate_passive_port_range,
     validate_server_directory, is_port_available, is_port_range_available
 )
+from pyftp.server.connection_counter import get_connection_counter
 
 
 # 抑制不必要的警告
@@ -60,10 +61,14 @@ class CustomFTPHandler(FTPHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Passive ports will be set from config in the manager
+        # 获取连接计数器实例
+        self.connection_counter = get_connection_counter()
     
     def on_connect(self):
         """Callback when a client connects."""
         logging.info(f"新连接来自: {self.remote_ip}:{self.remote_port}")
+        # 增加连接计数
+        self.connection_counter.increment()
     
     def on_login(self, username):
         """Callback when a user logs in."""
@@ -72,6 +77,8 @@ class CustomFTPHandler(FTPHandler):
     def on_disconnect(self):
         """Callback when a client disconnects."""
         logging.info(f"连接关闭: {self.remote_ip}:{self.remote_port}")
+        # 减少连接计数
+        self.connection_counter.decrement()
 
     def on_file_sent(self, file):
         """Callback when a file is sent."""
@@ -105,7 +112,7 @@ class FTPServerManager(ServerManager):
     def __init__(self):
         self.ftp_server_thread = None
         self.server_instance = None
-        self.active_connections = 0  # 跟踪活动连接数
+        self.connection_counter = get_connection_counter()
     
     def is_port_available(self, port: int) -> bool:
         """Check if a port is available.
@@ -154,7 +161,7 @@ class FTPServerManager(ServerManager):
         Returns:
             Number of active connections
         """
-        return self.active_connections
+        return self.connection_counter.get_count()
     
     def start_server(self, config: Dict[str, Any]) -> bool:
         """Start the FTP server with the given configuration.
@@ -174,7 +181,7 @@ class FTPServerManager(ServerManager):
             self._validate_config(config)
             
             # Reset connection count
-            self.active_connections = 0
+            self.connection_counter.reset()
             
             authorizer = DummyAuthorizer()
             directory = config.get('directory', DEFAULT_DIRECTORY)
@@ -201,7 +208,7 @@ class FTPServerManager(ServerManager):
             if config.get('passive', DEFAULT_PASSIVE_MODE) and self.server_instance:
                 passive_start = config.get('passive_start', DEFAULT_PASSIVE_START)
                 passive_end = config.get('passive_end', DEFAULT_PASSIVE_END)
-                self.server_instance.handler.passive_ports = range(passive_start, passive_end + 1)
+                handler.passive_ports = range(passive_start, passive_end + 1)
             
             # 优化服务器配置以提高性能
             self.server_instance.max_cons = 512  # 增加最大连接数
@@ -266,7 +273,7 @@ class FTPServerManager(ServerManager):
                 
                 self.ftp_server_thread = None
                 self.server_instance = None
-                self.active_connections = 0
+                self.connection_counter.reset()
                 logging.info("FTP服务器已停止")
                 return True
             except Exception as e:

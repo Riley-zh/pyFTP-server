@@ -95,11 +95,6 @@ class ConfigManager(ConfigManagerInterface):
             # 如果是数字字符串，直接转换
             if isinstance(value, str) and (value.isdigit() or (value.startswith('-') and value[1:].isdigit())):
                 return int(value)
-            # 如果是编码字符串（'gbk'或'utf-8'），则根据内容返回索引
-            elif isinstance(value, str) and value.lower() == 'gbk':
-                return 0
-            elif isinstance(value, str) and value.lower() == 'utf-8':
-                return 1
             # 其他情况返回默认值
             else:
                 return default
@@ -126,21 +121,20 @@ class ConfigManager(ConfigManagerInterface):
         try:
             config.add_section('server')
             
-            # 保存所有配置项，而不仅仅是与默认值不同的项
+            # 保存所有配置项，确保保存索引值而不是字符串值
             # 这样可以确保配置文件包含完整的配置信息
             for key, value in config_data.items():
-                # 对于编码和线程模式，确保保存索引值而不是字符串值
-                if key == 'encoding':
-                    # 将编码字符串转换为索引
-                    if value == 'gbk':
-                        config.set('server', 'encoding', '0')
-                    elif value == 'utf-8':
-                        config.set('server', 'encoding', '1')
-                    else:
-                        config.set('server', 'encoding', str(value))
+                # 特殊处理编码和线程模式索引
+                if key in ['encoding_idx', 'threading_idx']:
+                    config.set('server', key, str(value))
+                elif key == 'encoding':
+                    # 保存编码索引而不是编码字符串
+                    encoding_idx = config_data.get('encoding_idx', 0)
+                    config.set('server', 'encoding', str(encoding_idx))
                 elif key == 'threading':
-                    # 将布尔值转换为索引
-                    config.set('server', 'threading', '1' if value else '0')
+                    # 保存线程模式索引而不是布尔值
+                    threading_idx = config_data.get('threading_idx', 1)
+                    config.set('server', 'threading', str(threading_idx))
                 elif isinstance(value, bool):
                     config.set('server', key, str(value).lower())
                 else:

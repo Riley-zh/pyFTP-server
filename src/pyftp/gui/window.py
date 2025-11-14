@@ -31,6 +31,7 @@ from pyftp.core.constants import STATUS_UPDATE_INTERVAL
 from pyftp.core.interfaces import ServerManager, ConfigManager as ConfigManagerInterface
 from pyftp.core.exceptions import PyFTPError, ConfigError, ServerError, ValidationError
 from pyftp.server.logger import QtLogHandler
+from pyftp.server.connection_counter import get_connection_counter
 
 
 # 抑制不必要的警告
@@ -46,6 +47,7 @@ class FTPWindow(QMainWindow):
         self.config_file = "ftpserver.ini"
         self.config_manager: ConfigManagerInterface = ConfigManager(self.config_file)
         self.ftp_server_manager: ServerManager = FTPServerManager()
+        self.connection_counter = get_connection_counter()
         
         # 用于异步操作的定时器
         self.status_update_timer = QTimer()
@@ -199,7 +201,7 @@ class FTPWindow(QMainWindow):
         """Update the status bar with server information."""
         if self.ftp_server_manager.is_running():
             config = self.config_panel.get_config()
-            conn_count = self.ftp_server_manager.get_connection_count()
+            conn_count = self.connection_counter.get_count()
             status_text = (f"服务器运行中: 端口 {config['port']}, "
                           f"目录 {config['directory']}, "
                           f"编码 {config['encoding'].upper()}, "
