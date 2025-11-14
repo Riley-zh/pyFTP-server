@@ -5,13 +5,23 @@ Control panel with action buttons for the FTP server.
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QPushButton
 )
+from PyQt5.QtCore import pyqtSignal
+
+from pyftp.core.qt_base_service import QtBaseService
 
 
-class ControlPanel(QWidget):
+class ControlPanel(QWidget, QtBaseService):
     """Control panel with action buttons."""
     
+    # Signals
+    server_state_changed = pyqtSignal(bool)
+    config_saved = pyqtSignal()
+    config_reloaded = pyqtSignal()
+    log_cleared = pyqtSignal()
+    
     def __init__(self):
-        super().__init__()
+        QWidget.__init__(self)
+        QtBaseService.__init__(self)
         self.setup_ui()
     
     def setup_ui(self):
@@ -41,3 +51,6 @@ class ControlPanel(QWidget):
         else:
             self.start_btn.setText("启动服务器")
             self.reload_btn.setEnabled(False)
+        
+        # 发送信号
+        self.server_state_changed.emit(running)

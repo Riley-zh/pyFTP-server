@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import pyqtSignal, QTimer
 from PyQt5.QtGui import QIntValidator
 
+from pyftp.core.qt_base_service import QtBaseService
 from pyftp.core.constants import (
     DEFAULT_PORT, DEFAULT_DIRECTORY, DEFAULT_PASSIVE_MODE,
     DEFAULT_PASSIVE_START, DEFAULT_PASSIVE_END, 
@@ -20,7 +21,7 @@ from pyftp.utils.helpers import validate_directory
 from pyftp.core.exceptions import ValidationError
 
 
-class ConfigPanel(QGroupBox):
+class ConfigPanel(QGroupBox, QtBaseService):
     """Configuration panel for FTP server settings."""
     
     # Signals
@@ -28,7 +29,8 @@ class ConfigPanel(QGroupBox):
     config_changed = pyqtSignal()
     
     def __init__(self):
-        super().__init__("服务器配置")
+        QGroupBox.__init__(self, "服务器配置")
+        QtBaseService.__init__(self)
         self.setup_ui()
         self._setup_validators()
         self._connect_signals()
@@ -145,13 +147,15 @@ class ConfigPanel(QGroupBox):
             try:
                 port = int(port_text)
                 if not (MIN_PORT <= port <= MAX_PORT):
-                    self.port_edit.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
+                    self.port_edit.setStyleSheet("QLineEdit { background-color: #FFCCCC; border: 1px solid red; }")
                 else:
-                    self.port_edit.setStyleSheet("")
+                    self.port_edit.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
             except ValueError:
-                self.port_edit.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
+                # 移除样式设置
+                pass
         else:
-            self.port_edit.setStyleSheet("")
+            # 移除样式设置
+            pass
         
         # 验证被动端口范围
         start_text = self.passive_start.text()
@@ -162,17 +166,17 @@ class ConfigPanel(QGroupBox):
                 start = int(start_text)
                 end = int(end_text)
                 if not (MIN_PASSIVE_PORT <= start <= MAX_PASSIVE_PORT) or not (MIN_PASSIVE_PORT <= end <= MAX_PASSIVE_PORT) or start >= end:
-                    self.passive_start.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
-                    self.passive_end.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
+                    self.passive_start.setStyleSheet("QLineEdit { background-color: #FFCCCC; border: 1px solid red; }")
+                    self.passive_end.setStyleSheet("QLineEdit { background-color: #FFCCCC; border: 1px solid red; }")
                 else:
-                    self.passive_start.setStyleSheet("")
-                    self.passive_end.setStyleSheet("")
+                    self.passive_start.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
+                    self.passive_end.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
             except ValueError:
-                self.passive_start.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
-                self.passive_end.setStyleSheet("QLineEdit { background-color: #FFCCCC; }")
+                # 移除样式设置
+                pass
         else:
-            self.passive_start.setStyleSheet("")
-            self.passive_end.setStyleSheet("")
+            # 移除样式设置
+            pass
     
     def toggle_passive_fields(self):
         """Enable/disable passive mode fields based on checkbox state."""
@@ -234,4 +238,12 @@ class ConfigPanel(QGroupBox):
             if config['passive_start'] >= config['passive_end']:
                 errors.append("被动端口范围无效: 起始端口必须小于结束端口")
         
+        # 如果有错误，高亮显示相关字段
+        if errors:
+            self._highlight_error_fields(config, errors)
+        
         return errors
+    
+    def _highlight_error_fields(self, config, errors):
+        """Highlight fields with errors."""
+        pass

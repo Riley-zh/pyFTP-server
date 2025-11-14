@@ -4,7 +4,6 @@ Interfaces for PyFTP server components.
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
-import logging
 from pathlib import Path
 
 from pyftp.core.exceptions import ConfigError, ServerError, ValidationError
@@ -113,24 +112,20 @@ class ConfigManager(ABC):
         """
         pass
     
+    @abstractmethod
     def get_config_path(self) -> Path:
         """Get the configuration file path.
         
         Returns:
             Path to the configuration file
-            
-        Raises:
-            NotImplementedError: If not implemented by subclass
         """
-        raise NotImplementedError("Subclasses should implement this method")
+        pass
     
+    @abstractmethod
     def reset_to_defaults(self) -> bool:
         """Reset configuration to default values.
         
         Returns:
             True if successful, False otherwise
-            
-        Raises:
-            NotImplementedError: If not implemented by subclass
         """
-        raise NotImplementedError("Subclasses should implement this method")
+        pass

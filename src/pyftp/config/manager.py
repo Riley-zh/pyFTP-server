@@ -4,10 +4,11 @@ Configuration manager for loading and saving server settings.
 
 import os
 import configparser
-import logging
+import time
 from typing import Dict, Any, Optional
 from pathlib import Path
 
+from pyftp.core.base_service import BaseService
 from pyftp.core.interfaces import ConfigManager as ConfigManagerInterface
 from pyftp.core.constants import (
     DEFAULT_PORT, DEFAULT_DIRECTORY, DEFAULT_PASSIVE_MODE,
@@ -16,10 +17,11 @@ from pyftp.core.constants import (
     MIN_PORT, MAX_PORT, MIN_PASSIVE_PORT, MAX_PASSIVE_PORT
 )
 from pyftp.core.exceptions import ConfigError
+from pyftp.core.error_handler import handle_errors, get_error_details
 from pyftp.utils.helpers import validate_directory
 
 
-class ConfigManager(ConfigManagerInterface):
+class ConfigManager(BaseService, ConfigManagerInterface):
     """Manager for loading and saving configuration."""
     
     # 默认配置
@@ -34,7 +36,11 @@ class ConfigManager(ConfigManagerInterface):
     }
     
     def __init__(self, config_file: str = "ftpserver.ini"):
+        BaseService.__init__(self)
         self.config_file = Path(config_file).resolve()
+        self._config_cache = None
+        self._cache_timestamp = 0
+        self._cache_ttl = 30  # 增加缓存时间到30秒以提高性能
     
     def load_config(self) -> Optional[Dict[str, Any]]:
         """Load configuration from file.
@@ -45,8 +51,15 @@ class ConfigManager(ConfigManagerInterface):
         Raises:
             ConfigError: If there's an error parsing the configuration file
         """
+        # 检查缓存
+        current_time = time.time()
+        if self._config_cache is not None and (current_time - self._cache_timestamp) < self._cache_ttl:
+            return self._config_cache
+            
         if not self.config_file.exists():
-            logging.info(f"配置文件不存在: {self.config_file}")
+            self.log_info(f"配置文件不存在: {self.config_file}")
+            self._config_cache = None
+            self._cache_timestamp = current_time
             return None
             
         config = configparser.ConfigParser()
@@ -54,7 +67,9 @@ class ConfigManager(ConfigManagerInterface):
         try:
             # 检查文件是否可读
             if not os.access(self.config_file, os.R_OK):
-                logging.warning(f"配置文件无法读取: {self.config_file}")
+                self.log_warning(f"配置文件无法读取: {self.config_file}")
+                self._config_cache = None
+                self._cache_timestamp = current_time
                 return None
                 
             config.read(self.config_file, encoding='utf-8')
@@ -77,16 +92,25 @@ class ConfigManager(ConfigManagerInterface):
                     'encoding_idx': self._parse_int_value(encoding_value, self.DEFAULT_CONFIG['encoding_idx']),
                     'threading_idx': self._parse_int_value(threading_value, self.DEFAULT_CONFIG['threading_idx'])
                 })
-                logging.info(f"配置文件加载成功: {self.config_file}")
+                self.log_info(f"配置文件加载成功: {self.config_file}")
+                # 更新缓存
+                self._config_cache = config_data
+                self._cache_timestamp = current_time
                 return config_data
             else:
-                logging.warning(f"配置文件缺少'server'节: {self.config_file}")
+                self.log_warning(f"配置文件缺少'server'节: {self.config_file}")
+                self._config_cache = None
+                self._cache_timestamp = current_time
                 return None
         except configparser.Error as e:
-            logging.error(f"解析配置文件失败: {str(e)}")
+            self.log_error(f"解析配置文件失败: {str(e)}")
+            self._config_cache = None
+            self._cache_timestamp = current_time
             raise ConfigError(f"解析配置文件失败: {str(e)}")
         except Exception as e:
-            logging.error(f"加载配置失败: {str(e)}")
+            self.log_error(f"加载配置失败: {str(e)}")
+            self._config_cache = None
+            self._cache_timestamp = current_time
             raise ConfigError(f"加载配置失败: {str(e)}")
     
     def _parse_int_value(self, value: str, default: int) -> int:
@@ -101,6 +125,7 @@ class ConfigManager(ConfigManagerInterface):
         except (ValueError, TypeError):
             return default
     
+    @handle_errors(default_return=False, log_errors=True)
     def save_config(self, config_data: Dict[str, Any]) -> bool:
         """Save configuration to file.
         
@@ -145,16 +170,19 @@ class ConfigManager(ConfigManagerInterface):
             
             # 检查文件是否可写
             if self.config_file.exists() and not os.access(self.config_file, os.W_OK):
-                logging.error(f"配置文件无法写入: {self.config_file}")
+                self.log_error(f"配置文件无法写入: {self.config_file}")
                 return False
                 
             with open(self.config_file, 'w', encoding='utf-8') as configfile:
                 config.write(configfile)
-            logging.info(f"配置文件保存成功: {self.config_file}")
+            self.log_info(f"配置文件保存成功: {self.config_file}")
+            # 清除缓存以强制重新加载
+            self._config_cache = None
             return True
         except Exception as e:
-            logging.error(f"保存配置失败: {str(e)}")
-            raise ConfigError(f"保存配置失败: {str(e)}")
+            error_details = get_error_details(e)
+            self.log_error(f"保存配置失败: {str(e)} - 详细信息: {error_details}")
+            raise ConfigError(f"保存配置失败: {str(e)}", error_code="CFG002", details=error_details)
     
     def _validate_config(self, config_data: Dict[str, Any]) -> None:
         """Validate configuration data.

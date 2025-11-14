@@ -7,6 +7,8 @@ import threading
 from collections import deque
 from PyQt5.QtCore import QObject, pyqtSignal
 
+from pyftp.core.base_service import BaseService
+
 
 class QtLogHandler(QObject, logging.Handler):
     """Custom logging handler that emits Qt signals for GUI updates."""
@@ -14,6 +16,7 @@ class QtLogHandler(QObject, logging.Handler):
     log_signal = pyqtSignal(str, str)
     
     def __init__(self, max_buffer_size: int = 1000):
+        # 由于多重继承，直接调用父类初始化
         super().__init__()
         logging.Handler.__init__(self)
         self.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s', 

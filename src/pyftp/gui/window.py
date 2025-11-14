@@ -15,12 +15,13 @@ from pathlib import Path
 
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QStatusBar, QMessageBox, QFileDialog
+    QStatusBar, QMessageBox, QFileDialog, QGraphicsOpacityEffect
 )
-from PyQt5.QtCore import QTimer, pyqtSignal
+from PyQt5.QtCore import QTimer, pyqtSignal, QPropertyAnimation, QEasingCurve
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtCore import QEvent
 
+from pyftp.core.qt_base_service import QtBaseService
 from pyftp.gui.components.config_panel import ConfigPanel
 from pyftp.gui.components.control_panel import ControlPanel
 from pyftp.gui.components.log_panel import LogPanel
@@ -39,11 +40,12 @@ warnings.filterwarnings("ignore", category=RuntimeWarning,
                        message="write permissions assigned to anonymous user")
 
 
-class FTPWindow(QMainWindow):
+class FTPWindow(QMainWindow, QtBaseService):
     """Main application window."""
     
     def __init__(self):
-        super().__init__()
+        QMainWindow.__init__(self)
+        QtBaseService.__init__(self)
         self.config_file = "ftpserver.ini"
         self.config_manager: ConfigManagerInterface = ConfigManager(self.config_file)
         self.ftp_server_manager: ServerManager = FTPServerManager()
@@ -66,10 +68,14 @@ class FTPWindow(QMainWindow):
         self.setWindowTitle("PyFTP Server")
         self.setGeometry(100, 100, 800, 600)
         
+        # 移除窗口样式
+        
         # 创建中央部件
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(10, 10, 10, 10)
         
         # 配置面板
         self.config_panel = ConfigPanel()
@@ -136,7 +142,7 @@ class FTPWindow(QMainWindow):
         ftp_logger.setLevel(logging.INFO)
         
         # 记录一条测试日志，确认日志系统工作正常
-        logging.info("日志系统初始化完成")
+        self.log_info("日志系统初始化完成")
     
     def append_log(self, message, level):
         """Append log message to the log panel."""
@@ -149,7 +155,11 @@ class FTPWindow(QMainWindow):
     def clear_log(self):
         """Clear log display."""
         self.log_panel.clear_log()
-        logging.info("日志已清空")
+        self.log_info("日志已清空")
+        self.control_panel.log_cleared.emit()
+        
+        # 添加视觉反馈动画
+        self._animate_widget(self.log_panel, duration=300)
     
     def browse_dir(self):
         """Open directory browser."""
@@ -163,13 +173,13 @@ class FTPWindow(QMainWindow):
             config_data = self.config_manager.load_config()
             if config_data:
                 self.config_panel.load_config(config_data)
-                logging.info("配置文件已加载")
+                self.log_info("配置文件已加载")
             else:
-                logging.warning("配置文件不存在，使用默认配置")
+                self.log_warning("配置文件不存在，使用默认配置")
                 # 创建默认配置
                 self.save_config()
         except ConfigError as e:
-            logging.error(f"配置加载失败: {str(e)}")
+            self.log_error(f"配置加载失败: {str(e)}")
             QMessageBox.critical(self, "配置错误", f"配置加载失败: {str(e)}")
     
     def save_config(self):
@@ -178,20 +188,26 @@ class FTPWindow(QMainWindow):
             config_data = self.config_panel.get_config()
             success = self.config_manager.save_config(config_data)
             if success:
-                logging.info("配置保存成功")
+                self.log_info("配置保存成功")
+                self.control_panel.config_saved.emit()
+                
+                # 添加视觉反馈动画
+                self._animate_widget(self.config_panel, duration=500)
             else:
-                logging.error("保存配置失败")
+                self.log_error("保存配置失败")
         except (ConfigError, ValidationError) as e:
-            logging.error(f"配置保存失败: {str(e)}")
+            self.log_error(f"配置保存失败: {str(e)}")
             QMessageBox.critical(self, "配置错误", f"配置保存失败: {str(e)}")
     
     def reload_config(self):
         """Reload configuration and restart server if running."""
         if self.ftp_server_manager.is_running():
-            logging.info("正在重新加载配置...")
+            self.log_info("正在重新加载配置...")
             self.stop_server()
             # 使用定时器延迟启动以确保服务器完全停止
             QTimer.singleShot(500, self._delayed_start_server)
+        else:
+            self.control_panel.config_reloaded.emit()
     
     def _delayed_start_server(self):
         """Wrapper method for starting server with QTimer."""
@@ -214,7 +230,7 @@ class FTPWindow(QMainWindow):
         errors = self.config_panel.validate_config()
         if errors:
             error_msg = "\n".join(errors)
-            logging.error(f"配置验证失败:\n{error_msg}")
+            self.log_error(f"配置验证失败:\n{error_msg}")
             QMessageBox.critical(self, "配置错误", f"配置验证失败:\n{error_msg}")
             return False
         return True
@@ -229,31 +245,34 @@ class FTPWindow(QMainWindow):
         
         try:
             if not self.ftp_server_manager.is_port_available(config['port']):
-                logging.error(f"端口 {config['port']} 已被占用，请选择其他端口")
+                self.log_error(f"端口 {config['port']} 已被占用，请选择其他端口")
                 QMessageBox.critical(self, "端口冲突", f"端口 {config['port']} 已被占用，请选择其他端口")
                 return False
             
             if config['passive']:
                 if not self.ftp_server_manager.is_port_range_available(config['passive_start'], config['passive_end']):
-                    logging.error("被动端口范围已被占用或不可用")
+                    self.log_error("被动端口范围已被占用或不可用")
                     QMessageBox.critical(self, "端口冲突", "被动端口范围已被占用或不可用")
                     return False
             
             success = self.ftp_server_manager.start_server(config)
             if success:
                 self.control_panel.set_server_running(True)
-                logging.info(f"FTP服务器已启动 ({'多线程' if config['threading'] else '单线程'}模式)")
+                self.log_info(f"FTP服务器已启动 ({'多线程' if config['threading'] else '单线程'}模式)")
+                
+                # 添加视觉反馈动画
+                self._animate_widget(self.control_panel, duration=500)
                 return True
             else:
-                logging.error("启动服务器失败")
+                self.log_error("启动服务器失败")
                 QMessageBox.critical(self, "服务器错误", "启动服务器失败")
                 return False
         except (ServerError, ValidationError) as e:
-            logging.error(f"启动服务器失败: {str(e)}")
+            self.log_error(f"启动服务器失败: {str(e)}")
             QMessageBox.critical(self, "服务器错误", f"启动服务器失败: {str(e)}")
             return False
         except Exception as e:
-            logging.error(f"启动服务器时发生未知错误: {str(e)}")
+            self.log_error(f"启动服务器时发生未知错误: {str(e)}")
             QMessageBox.critical(self, "服务器错误", f"启动服务器时发生未知错误: {str(e)}")
             return False
     
@@ -264,13 +283,16 @@ class FTPWindow(QMainWindow):
                 success = self.ftp_server_manager.stop_server()
                 if success:
                     self.control_panel.set_server_running(False)
-                    logging.info("FTP服务器已停止")
+                    self.log_info("FTP服务器已停止")
+                    
+                    # 添加视觉反馈动画
+                    self._animate_widget(self.control_panel, duration=500)
                     return True
                 else:
-                    logging.error("停止服务器失败")
+                    self.log_error("停止服务器失败")
                     return False
             except PyFTPError as e:
-                logging.error(f"停止服务器失败: {str(e)}")
+                self.log_error(f"停止服务器失败: {str(e)}")
                 return False
         return True
     
@@ -280,6 +302,24 @@ class FTPWindow(QMainWindow):
             self.stop_server()
         else:
             self.start_server()
+    
+    def _animate_widget(self, widget, duration=300):
+        """Add a visual animation to a widget."""
+        try:
+            # 创建透明度效果
+            effect = QGraphicsOpacityEffect(widget)
+            widget.setGraphicsEffect(effect)
+            
+            # 创建动画
+            animation = QPropertyAnimation(effect, b"opacity")
+            animation.setDuration(duration)
+            animation.setStartValue(0.7)
+            animation.setEndValue(1.0)
+            animation.setEasingCurve(QEasingCurve.OutCubic)
+            animation.start()
+        except Exception as e:
+            # 静默处理动画错误，不影响主要功能
+            pass
     
     def closeEvent(self, a0):
         """Handle window close event."""

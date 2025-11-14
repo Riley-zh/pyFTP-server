@@ -6,6 +6,8 @@ import os
 import socket
 from typing import Optional
 
+from pyftp.server.port_cache import get_port_cache
+
 
 def is_port_available(port: int, host: str = "0.0.0.0") -> bool:
     """Check if a port is available on the given host.
@@ -17,12 +19,9 @@ def is_port_available(port: int, host: str = "0.0.0.0") -> bool:
     Returns:
         True if port is available, False otherwise
     """
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((host, port))
-            return True
-    except OSError:
-        return False
+    # Use port cache for better performance
+    port_cache = get_port_cache()
+    return port_cache.is_port_available(port, host)
 
 
 def is_port_range_available(start: int, end: int, host: str = "0.0.0.0") -> bool:
@@ -36,10 +35,9 @@ def is_port_range_available(start: int, end: int, host: str = "0.0.0.0") -> bool
     Returns:
         True if all ports in range are available, False otherwise
     """
-    for port in range(start, end + 1):
-        if not is_port_available(port, host):
-            return False
-    return True
+    # Use port cache for better performance
+    port_cache = get_port_cache()
+    return port_cache.is_port_range_available(start, end, host)
 
 
 def validate_directory(path: str) -> bool:

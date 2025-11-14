@@ -6,12 +6,15 @@ from PyQt5.QtWidgets import (
     QGroupBox, QVBoxLayout, QHBoxLayout, QLabel
 )
 
+from pyftp.core.qt_base_service import QtBaseService
 
-class UserPanel(QGroupBox):
+
+class UserPanel(QGroupBox, QtBaseService):
     """User panel for displaying user configuration information."""
     
     def __init__(self):
-        super().__init__("用户配置")
+        QGroupBox.__init__(self, "用户配置")
+        QtBaseService.__init__(self)
         self.setup_ui()
     
     def setup_ui(self):

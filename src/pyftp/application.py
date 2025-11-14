@@ -7,6 +7,7 @@ import logging
 from typing import Dict, Any, Optional
 from pathlib import Path
 
+from pyftp.core.base_service import BaseService
 from pyftp.core.interfaces import ServerManager, ConfigManager
 from pyftp.server.ftp_server import FTPServerManager
 from pyftp.config.manager import ConfigManager as ConfigManagerImpl
@@ -16,9 +17,10 @@ from pyftp.core.constants import (
     DEFAULT_ENCODING_IDX, DEFAULT_THREADING_IDX
 )
 from pyftp.core.exceptions import PyFTPError, ConfigError, ServerError
+from pyftp.core.error_handler import handle_errors, get_error_details
 
 
-class PyFTPApplication:
+class PyFTPApplication(BaseService):
     """Main application class that coordinates all components."""
     
     def __init__(self, config_file: str = "ftpserver.ini"):
@@ -27,11 +29,13 @@ class PyFTPApplication:
         Args:
             config_file: Path to the configuration file
         """
+        BaseService.__init__(self)
         self.config_file = config_file
         self.config_manager: ConfigManager = ConfigManagerImpl(config_file)
         self.server_manager: ServerManager = FTPServerManager()
         self._is_initialized = False
     
+    @handle_errors(default_return=False, log_errors=True)
     def initialize(self) -> bool:
         """Initialize the application.
         
@@ -49,10 +53,11 @@ class PyFTPApplication:
             self._load_configuration()
             
             self._is_initialized = True
-            logging.info("PyFTP应用程序初始化成功")
+            self.log_info("PyFTP应用程序初始化成功")
             return True
         except Exception as e:
-            logging.error(f"应用程序初始化失败: {str(e)}")
+            error_details = get_error_details(e)
+            self.log_error(f"应用程序初始化失败: {str(e)} - 详细信息: {error_details}")
             return False
     
     def _setup_logging(self) -> None:
@@ -71,10 +76,11 @@ class PyFTPApplication:
         try:
             config_data = self.config_manager.load_config()
             if not config_data:
-                logging.info("未找到配置文件，使用默认配置")
+                self.log_info("未找到配置文件，使用默认配置")
         except ConfigError as e:
-            logging.error(f"配置加载失败: {str(e)}")
+            self.log_error(f"配置加载失败: {str(e)}")
     
+    @handle_errors(default_return=None, log_errors=True)
     def get_config(self) -> Optional[Dict[str, Any]]:
         """Get current configuration.
         
@@ -84,9 +90,11 @@ class PyFTPApplication:
         try:
             return self.config_manager.load_config()
         except ConfigError as e:
-            logging.error(f"配置获取失败: {str(e)}")
+            error_details = get_error_details(e)
+            self.log_error(f"配置获取失败: {str(e)} - 详细信息: {error_details}")
             return None
     
+    @handle_errors(default_return=False, log_errors=True)
     def save_config(self, config_data: Dict[str, Any]) -> bool:
         """Save configuration.
         
@@ -99,9 +107,11 @@ class PyFTPApplication:
         try:
             return self.config_manager.save_config(config_data)
         except (ConfigError, PyFTPError) as e:
-            logging.error(f"配置保存失败: {str(e)}")
+            error_details = get_error_details(e)
+            self.log_error(f"配置保存失败: {str(e)} - 详细信息: {error_details}")
             return False
     
+    @handle_errors(default_return=False, log_errors=True)
     def start_server(self, config: Dict[str, Any]) -> bool:
         """Start the FTP server.
         
@@ -114,9 +124,11 @@ class PyFTPApplication:
         try:
             return self.server_manager.start_server(config)
         except (ServerError, PyFTPError) as e:
-            logging.error(f"服务器启动失败: {str(e)}")
+            error_details = get_error_details(e)
+            self.log_error(f"服务器启动失败: {str(e)} - 详细信息: {error_details}")
             return False
     
+    @handle_errors(default_return=False, log_errors=True)
     def stop_server(self) -> bool:
         """Stop the FTP server.
         
@@ -126,7 +138,8 @@ class PyFTPApplication:
         try:
             return self.server_manager.stop_server()
         except PyFTPError as e:
-            logging.error(f"服务器停止失败: {str(e)}")
+            error_details = get_error_details(e)
+            self.log_error(f"服务器停止失败: {str(e)} - 详细信息: {error_details}")
             return False
     
     def is_server_running(self) -> bool:

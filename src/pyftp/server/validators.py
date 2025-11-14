@@ -8,6 +8,7 @@ from typing import Tuple
 from pyftp.core.constants import MIN_PORT, MAX_PORT, MIN_PASSIVE_PORT, MAX_PASSIVE_PORT
 from pyftp.core.exceptions import ValidationError
 from pyftp.utils.helpers import validate_directory
+from pyftp.server.port_cache import get_port_cache
 
 
 def validate_port(port: int) -> None:
@@ -83,12 +84,9 @@ def is_port_available(port: int, host: str = "0.0.0.0") -> bool:
     Returns:
         True if port is available, False otherwise
     """
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((host, port))
-            return True
-    except OSError:
-        return False
+    # Use port cache for better performance
+    port_cache = get_port_cache()
+    return port_cache.is_port_available(port, host)
 
 
 def is_port_range_available(start: int, end: int, host: str = "0.0.0.0") -> bool:
@@ -102,7 +100,6 @@ def is_port_range_available(start: int, end: int, host: str = "0.0.0.0") -> bool
     Returns:
         True if all ports in range are available, False otherwise
     """
-    for port in range(start, end + 1):
-        if not is_port_available(port, host):
-            return False
-    return True
+    # Use port cache for better performance
+    port_cache = get_port_cache()
+    return port_cache.is_port_range_available(start, end, host)

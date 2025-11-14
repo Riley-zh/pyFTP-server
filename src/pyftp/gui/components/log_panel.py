@@ -9,16 +9,21 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import pyqtSignal, QTimer
 from PyQt5.QtGui import QColor, QTextCursor, QTextCharFormat
 
+from pyftp.core.qt_base_service import QtBaseService
 from pyftp.core.constants import LOG_LEVEL_ALL, LOG_LEVEL_INFO, LOG_LEVEL_WARNING, LOG_LEVEL_ERROR, MAX_LOG_LINES
+from PyQt5.QtCore import QTimer
 
 
-class LogPanel(QGroupBox):
+class LogPanel(QGroupBox, QtBaseService):
     """Log panel for displaying server logs."""
     
     def __init__(self):
-        super().__init__("服务器日志")
+        QGroupBox.__init__(self, "服务器日志")
+        QtBaseService.__init__(self)
         self.log_buffer = []  # 缓冲区用于批量更新
         self.max_lines = MAX_LOG_LINES  # 限制最大日志行数
+        self.batch_update_timer = None  # 批量更新定时器
+        self.batch_size = 50  # 增加批处理大小以提高性能
         self.setup_ui()
     
     def setup_ui(self):
@@ -37,14 +42,6 @@ class LogPanel(QGroupBox):
         
         self.log_view = QTextEdit()
         self.log_view.setReadOnly(True)
-        self.log_view.setStyleSheet("""
-            QTextEdit {
-                background-color: #1E1E1E;
-                color: #DCDCDC;
-                font-family: Consolas, Courier New, monospace;
-                font-size: 10pt;
-            }
-        """)
         
         # 优化性能：禁用换行和自动滚动
         self.log_view.setLineWrapMode(QTextEdit.NoWrap)
@@ -58,20 +55,29 @@ class LogPanel(QGroupBox):
         # 添加到缓冲区
         self.log_buffer.append((message, level))
         
-        # 如果缓冲区达到一定大小，或者这是重要的日志级别，立即处理
-        if len(self.log_buffer) >= 10 or level in ["ERROR", "CRITICAL", "WARNING"]:
+        # 增加批处理大小阈值以提高性能
+        if len(self.log_buffer) >= self.batch_size or level in ["ERROR", "CRITICAL"]:
             self._process_log_buffer()
-        # 对于INFO级别的日志，也定期处理以确保显示
-        else:
+        # 对于WARNING级别的日志，定期处理
+        elif level == "WARNING":
             # 使用单次定时器来处理缓冲区，避免频繁调用
             if not hasattr(self, '_buffer_timer'):
-                from PyQt5.QtCore import QTimer
                 self._buffer_timer = QTimer()
                 self._buffer_timer.setSingleShot(True)
                 self._buffer_timer.timeout.connect(self._process_log_buffer)
-            # 重启定时器，延迟100毫秒处理（如果定时器已经在运行，则重新启动）
+            # 重启定时器，延迟200毫秒处理
             self._buffer_timer.stop()
-            self._buffer_timer.start(100)
+            self._buffer_timer.start(200)
+        # 对于INFO级别的日志，延长处理时间以提高性能
+        else:
+            # 使用单次定时器来处理缓冲区，避免频繁调用
+            if not hasattr(self, '_buffer_timer'):
+                self._buffer_timer = QTimer()
+                self._buffer_timer.setSingleShot(True)
+                self._buffer_timer.timeout.connect(self._process_log_buffer)
+            # 重启定时器，延迟500毫秒处理
+            self._buffer_timer.stop()
+            self._buffer_timer.start(500)
     
     def _process_log_buffer(self):
         """Process the log buffer in batches for better performance."""
@@ -114,6 +120,9 @@ class LogPanel(QGroupBox):
         # 恢复滚动位置
         if at_bottom and scrollbar:
             scrollbar.setValue(scrollbar.maximum())
+        
+        # 移除样式设置
+        pass
     
     def _limit_log_lines(self):
         """Limit the number of log lines to prevent memory issues."""
