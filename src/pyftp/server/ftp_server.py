@@ -233,13 +233,6 @@ class FTPServerManager(BaseService, ServerManager):
             handler.ac_in_buffer_size = 65536
             handler.ac_out_buffer_size = 65536
             
-            # 优化被动模式设置
-            if config.get('passive', DEFAULT_PASSIVE_MODE) and self.server_instance:
-                # 设置被动端口范围
-                passive_start = config.get('passive_start', DEFAULT_PASSIVE_START)
-                passive_end = config.get('passive_end', DEFAULT_PASSIVE_END)
-                handler.passive_ports = range(passive_start, passive_end + 1)
-            
             # Start the server in a thread
             self.ftp_server_thread = FTPServerThread(self.server_instance)
             self.ftp_server_thread.start()

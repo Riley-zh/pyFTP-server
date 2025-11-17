@@ -80,8 +80,8 @@ class ConfigManager(BaseService, ConfigManagerInterface):
                 config_data.update(self.DEFAULT_CONFIG)
                 
                 # 正确处理编码和线程模式的加载
-                encoding_value = config.get('server', 'encoding', fallback=str(self.DEFAULT_CONFIG['encoding_idx']))
-                threading_value = config.get('server', 'threading', fallback=str(self.DEFAULT_CONFIG['threading_idx']))
+                encoding_value = config.get('server', 'encoding_idx', fallback=str(self.DEFAULT_CONFIG['encoding_idx']))
+                threading_value = config.get('server', 'threading_idx', fallback=str(self.DEFAULT_CONFIG['threading_idx']))
                 
                 config_data.update({
                     'port': config.getint('server', 'port', fallback=self.DEFAULT_CONFIG['port']),
@@ -146,8 +146,7 @@ class ConfigManager(BaseService, ConfigManagerInterface):
         try:
             config.add_section('server')
             
-            # 保存所有配置项，确保保存索引值而不是字符串值
-            # 这样可以确保配置文件包含完整的配置信息
+            # 保存所有配置项
             for key, value in config_data.items():
                 # 特殊处理编码和线程模式索引
                 if key in ['encoding_idx', 'threading_idx']:

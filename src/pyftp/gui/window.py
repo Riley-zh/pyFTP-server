@@ -313,7 +313,7 @@ class FTPWindow(QMainWindow, QtBaseService):
             # 创建动画
             animation = QPropertyAnimation(effect, b"opacity")
             animation.setDuration(duration)
-            animation.setStartValue(0.7)
+            animation.setStartValue(0.3)
             animation.setEndValue(1.0)
             animation.setEasingCurve(QEasingCurve.OutCubic)
             animation.start()

@@ -151,11 +151,9 @@ class ConfigPanel(QGroupBox, QtBaseService):
                 else:
                     self.port_edit.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
             except ValueError:
-                # 移除样式设置
-                pass
+                self.port_edit.setStyleSheet("QLineEdit { background-color: #FFCCCC; border: 1px solid red; }")
         else:
-            # 移除样式设置
-            pass
+            self.port_edit.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
         
         # 验证被动端口范围
         start_text = self.passive_start.text()
@@ -172,11 +170,11 @@ class ConfigPanel(QGroupBox, QtBaseService):
                     self.passive_start.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
                     self.passive_end.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
             except ValueError:
-                # 移除样式设置
-                pass
+                self.passive_start.setStyleSheet("QLineEdit { background-color: #FFCCCC; border: 1px solid red; }")
+                self.passive_end.setStyleSheet("QLineEdit { background-color: #FFCCCC; border: 1px solid red; }")
         else:
-            # 移除样式设置
-            pass
+            self.passive_start.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
+            self.passive_end.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
     
     def toggle_passive_fields(self):
         """Enable/disable passive mode fields based on checkbox state."""
@@ -246,4 +244,19 @@ class ConfigPanel(QGroupBox, QtBaseService):
     
     def _highlight_error_fields(self, config, errors):
         """Highlight fields with errors."""
-        pass
+        # 清除所有字段的错误样式
+        self.port_edit.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
+        self.passive_start.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
+        self.passive_end.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
+        
+        # 根据错误信息高亮显示相关字段
+        for error in errors:
+            if "端口" in error and str(config['port']) in error:
+                self.port_edit.setStyleSheet("QLineEdit { background-color: #FFCCCC; border: 1px solid red; }")
+            elif "被动起始端口" in error:
+                self.passive_start.setStyleSheet("QLineEdit { background-color: #FFCCCC; border: 1px solid red; }")
+            elif "被动结束端口" in error:
+                self.passive_end.setStyleSheet("QLineEdit { background-color: #FFCCCC; border: 1px solid red; }")
+            elif "被动端口范围无效" in error:
+                self.passive_start.setStyleSheet("QLineEdit { background-color: #FFCCCC; border: 1px solid red; }")
+                self.passive_end.setStyleSheet("QLineEdit { background-color: #FFCCCC; border: 1px solid red; }")

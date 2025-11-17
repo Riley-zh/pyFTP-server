@@ -45,3 +45,6 @@ package-dir = {"" = "src"}
 where = ["src"]
 include = ["pyftp*"]
 namespaces = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

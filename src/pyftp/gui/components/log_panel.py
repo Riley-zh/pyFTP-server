@@ -98,16 +98,17 @@ class LogPanel(QGroupBox, QtBaseService):
         format = QTextCharFormat()
         
         for message, level in self.log_buffer:
+            # 根据日志级别设置颜色
             if level == "WARNING":
-                color = "#FFA500"
+                color = QColor("#FFA500")  # 橙色
             elif level == "ERROR" or level == "CRITICAL":
-                color = "#FF5555"
+                color = QColor("#FF5555")  # 红色
             elif level == "INFO":
-                color = "#55AAFF"
+                color = QColor("#55AAFF")  # 蓝色
             else:
-                color = "#DCDCDC"
+                color = QColor("#DCDCDC")  # 灰色
             
-            format.setForeground(QColor(color))
+            format.setForeground(color)
             cursor.setCharFormat(format)
             cursor.insertText(message + '\n')
         
@@ -120,9 +121,6 @@ class LogPanel(QGroupBox, QtBaseService):
         # 恢复滚动位置
         if at_bottom and scrollbar:
             scrollbar.setValue(scrollbar.maximum())
-        
-        # 移除样式设置
-        pass
     
     def _limit_log_lines(self):
         """Limit the number of log lines to prevent memory issues."""
@@ -142,29 +140,52 @@ class LogPanel(QGroupBox, QtBaseService):
         level_map = {0: None, 1: "INFO", 2: "WARNING", 3: "ERROR"}
         filter_level = level_map[level_index]
         
-        # 获取所有日志内容
+        # 保存当前滚动位置
+        scrollbar = self.log_view.verticalScrollBar()
+        scroll_value = scrollbar.value() if scrollbar else 0
+        
+        # 获取所有文本
         full_text = self.log_view.toPlainText()
         lines = full_text.split('\n')
         
-        # 清空并重新添加过滤后的日志
+        # 清空视图
         self.log_view.clear()
+        
+        cursor = self.log_view.textCursor()
+        format = QTextCharFormat()
         
         for line in lines:
             if not line:
                 continue
                 
-            if filter_level is None or f" {filter_level}:" in line:
+            # 检查是否应该显示此行
+            should_show = True
+            if filter_level is not None:
+                if filter_level == "INFO" and " INFO:" not in line:
+                    should_show = False
+                elif filter_level == "WARNING" and " WARNING:" not in line:
+                    should_show = False
+                elif filter_level == "ERROR" and not (" ERROR:" in line or " CRITICAL:" in line):
+                    should_show = False
+            
+            if should_show:
+                # 根据日志内容确定级别并设置颜色
                 if " WARNING:" in line:
-                    color = "#FFA500"
+                    color = QColor("#FFA500")  # 橙色
                 elif " ERROR:" in line or " CRITICAL:" in line:
-                    color = "#FF5555"
+                    color = QColor("#FF5555")  # 红色
                 elif " INFO:" in line:
-                    color = "#55AAFF"
+                    color = QColor("#55AAFF")  # 蓝色
                 else:
-                    color = "#DCDCDC"
+                    color = QColor("#DCDCDC")  # 灰色
                 
-                self.log_view.setTextColor(QColor(color))
-                self.log_view.append(line)
+                format.setForeground(color)
+                cursor.setCharFormat(format)
+                cursor.insertText(line + '\n')
+        
+        # 恢复滚动位置
+        if scrollbar:
+            scrollbar.setValue(min(scroll_value, scrollbar.maximum()))
         
         # 滚动到底部
         self.log_view.moveCursor(QTextCursor.End)
