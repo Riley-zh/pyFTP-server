@@ -80,7 +80,6 @@ class GuiConfigPanel(QGroupBox, QtBaseService):
         passive_layout.addLayout(passive_sub_layout)
         config_layout.addLayout(passive_layout)
         
-        # 编码设置
         encoding_layout = QHBoxLayout()
         encoding_layout.addWidget(QLabel("FTP编码:"))
         self.encoding_combo = QComboBox()
@@ -90,7 +89,6 @@ class GuiConfigPanel(QGroupBox, QtBaseService):
         encoding_layout.addWidget(self.encoding_combo)
         encoding_layout.addStretch()
         
-        # 线程模式
         threading_layout = QHBoxLayout()
         threading_layout.addWidget(QLabel("服务器模式:"))
         self.threading_combo = QComboBox()
@@ -108,7 +106,7 @@ class GuiConfigPanel(QGroupBox, QtBaseService):
         """Connect UI signals to handlers."""
         self.dir_button.clicked.connect(self.directory_browse_requested)
         
-        # Connect all config change signals
+
         self.port_edit.textChanged.connect(self._on_config_changed)
         self.dir_edit.textChanged.connect(self._on_config_changed)
         self.passive_check.stateChanged.connect(self._on_config_changed)
@@ -123,30 +121,26 @@ class GuiConfigPanel(QGroupBox, QtBaseService):
     
     def _setup_validators(self):
         """Setup input validators with delayed validation."""
-        # 使用定时器延迟验证，避免用户输入时频繁验证
         self.port_validator = QIntValidator(MIN_PORT, MAX_PORT)
         self.passive_start_validator = QIntValidator(MIN_PASSIVE_PORT, MAX_PASSIVE_PORT)
         self.passive_end_validator = QIntValidator(MIN_PASSIVE_PORT, MAX_PASSIVE_PORT)
         
-        # 定时器用于延迟验证
         self.validation_timer = QTimer()
         self.validation_timer.setSingleShot(True)
         self.validation_timer.timeout.connect(self._perform_validation)
         
-        # 连接输入变化信号
+
         self.port_edit.textChanged.connect(lambda: self._schedule_validation('port'))
         self.passive_start.textChanged.connect(lambda: self._schedule_validation('passive_start'))
         self.passive_end.textChanged.connect(lambda: self._schedule_validation('passive_end'))
     
     def _schedule_validation(self, field):
         """Schedule validation with a delay."""
-        # 重新启动定时器
         self.validation_timer.stop()
-        self.validation_timer.start(500)  # 500ms延迟
+        self.validation_timer.start(500)
     
     def _perform_validation(self):
         """Perform validation on all fields."""
-        # 验证端口
         port_text = self.port_edit.text()
         if port_text:
             try:
@@ -160,7 +154,6 @@ class GuiConfigPanel(QGroupBox, QtBaseService):
         else:
             self.port_edit.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
         
-        # 验证被动端口范围
         start_text = self.passive_start.text()
         end_text = self.passive_end.text()
         
@@ -249,12 +242,11 @@ class GuiConfigPanel(QGroupBox, QtBaseService):
     
     def _highlight_error_fields(self, config, errors):
         """Highlight fields with errors."""
-        # 清除所有字段的错误样式
         self.port_edit.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
         self.passive_start.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
         self.passive_end.setStyleSheet("QLineEdit { background-color: #FFFFFF; border: 1px solid #CCCCCC; }")
         
-        # 根据错误信息高亮显示相关字段
+
         for error in errors:
             if "端口" in error and str(config['port']) in error:
                 self.port_edit.setStyleSheet("QLineEdit { background-color: #FFCCCC; border: 1px solid red; }")

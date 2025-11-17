@@ -19,9 +19,9 @@ from pathlib import Path
 
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QStatusBar, QMessageBox, QFileDialog, QGraphicsOpacityEffect
+    QStatusBar, QMessageBox, QFileDialog
 )
-from PyQt5.QtCore import QTimer, pyqtSignal, QPropertyAnimation, QEasingCurve
+from PyQt5.QtCore import QTimer, pyqtSignal
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtCore import QEvent
 
@@ -162,8 +162,7 @@ class GuiMainWindow(QMainWindow, QtBaseService):
         self.log_info("日志已清空")
         self.control_panel.log_cleared.emit()
         
-        # 添加视觉反馈动画
-        self._animate_widget(self.log_panel, duration=300)
+
     
     def browse_dir(self):
         """Open directory browser."""
@@ -195,8 +194,7 @@ class GuiMainWindow(QMainWindow, QtBaseService):
                 self.log_info("配置保存成功")
                 self.control_panel.config_saved.emit()
                 
-                # 添加视觉反馈动画
-                self._animate_widget(self.config_panel, duration=500)
+
             else:
                 self.log_error("保存配置失败")
         except (ConfigError, ValidationError) as e:
@@ -264,8 +262,7 @@ class GuiMainWindow(QMainWindow, QtBaseService):
                 self.control_panel.set_server_running(True)
                 self.log_info(f"FTP服务器已启动 ({'多线程' if config['threading'] else '单线程'}模式)")
                 
-                # 添加视觉反馈动画
-                self._animate_widget(self.control_panel, duration=500)
+
                 return True
             else:
                 self.log_error("启动服务器失败")
@@ -289,8 +286,7 @@ class GuiMainWindow(QMainWindow, QtBaseService):
                     self.control_panel.set_server_running(False)
                     self.log_info("FTP服务器已停止")
                     
-                    # 添加视觉反馈动画
-                    self._animate_widget(self.control_panel, duration=500)
+
                     return True
                 else:
                     self.log_error("停止服务器失败")
@@ -306,24 +302,6 @@ class GuiMainWindow(QMainWindow, QtBaseService):
             self.stop_server()
         else:
             self.start_server()
-    
-    def _animate_widget(self, widget, duration=300):
-        """Add a visual animation to a widget."""
-        try:
-            # 创建透明度效果
-            effect = QGraphicsOpacityEffect(widget)
-            widget.setGraphicsEffect(effect)
-            
-            # 创建动画
-            animation = QPropertyAnimation(effect, b"opacity")
-            animation.setDuration(duration)
-            animation.setStartValue(0.3)
-            animation.setEndValue(1.0)
-            animation.setEasingCurve(QEasingCurve.OutCubic)
-            animation.start()
-        except Exception as e:
-            # 静默处理动画错误，不影响主要功能
-            pass
     
     def closeEvent(self, a0):
         """Handle window close event."""

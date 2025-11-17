@@ -51,7 +51,6 @@ class ConfigManager(BaseService, ConfigManagerInterface):
         Raises:
             ConfigError: If there's an error parsing the configuration file
         """
-        # 检查缓存
         current_time = time.time()
         if self._config_cache is not None and (current_time - self._cache_timestamp) < self._cache_ttl:
             return self._config_cache
@@ -65,7 +64,6 @@ class ConfigManager(BaseService, ConfigManagerInterface):
         config = configparser.ConfigParser()
         
         try:
-            # 检查文件是否可读
             if not os.access(self.config_file, os.R_OK):
                 self.log_warning(f"配置文件无法读取: {self.config_file}")
                 self._config_cache = None
@@ -76,10 +74,8 @@ class ConfigManager(BaseService, ConfigManagerInterface):
             
             if config.has_section('server'):
                 config_data = {}
-                # 从默认配置开始，然后用文件中的值覆盖
                 config_data.update(self.DEFAULT_CONFIG)
                 
-                # 正确处理编码和线程模式的加载
                 encoding_value = config.get('server', 'encoding_idx', fallback=str(self.DEFAULT_CONFIG['encoding_idx']))
                 threading_value = config.get('server', 'threading_idx', fallback=str(self.DEFAULT_CONFIG['threading_idx']))
                 
@@ -93,7 +89,6 @@ class ConfigManager(BaseService, ConfigManagerInterface):
                     'threading_idx': self._parse_int_value(threading_value, self.DEFAULT_CONFIG['threading_idx'])
                 })
                 self.log_info(f"配置文件加载成功: {self.config_file}")
-                # 更新缓存
                 self._config_cache = config_data
                 self._cache_timestamp = current_time
                 return config_data
@@ -116,10 +111,8 @@ class ConfigManager(BaseService, ConfigManagerInterface):
     def _parse_int_value(self, value: str, default: int) -> int:
         """Parse string value to int, handling both string and int representations."""
         try:
-            # 如果是数字字符串，直接转换
             if isinstance(value, str) and (value.isdigit() or (value.startswith('-') and value[1:].isdigit())):
                 return int(value)
-            # 其他情况返回默认值
             else:
                 return default
         except (ValueError, TypeError):
@@ -138,7 +131,6 @@ class ConfigManager(BaseService, ConfigManagerInterface):
         Raises:
             ConfigError: If there's an error saving the configuration file
         """
-        # 验证配置数据
         self._validate_config(config_data)
         
         config = configparser.ConfigParser()
@@ -146,17 +138,13 @@ class ConfigManager(BaseService, ConfigManagerInterface):
         try:
             config.add_section('server')
             
-            # 保存所有配置项
             for key, value in config_data.items():
-                # 特殊处理编码和线程模式索引
                 if key in ['encoding_idx', 'threading_idx']:
                     config.set('server', key, str(value))
                 elif key == 'encoding':
-                    # 保存编码索引而不是编码字符串
                     encoding_idx = config_data.get('encoding_idx', 0)
                     config.set('server', 'encoding_idx', str(encoding_idx))
                 elif key == 'threading':
-                    # 保存线程模式索引而不是布尔值
                     threading_idx = config_data.get('threading_idx', 1)
                     config.set('server', 'threading_idx', str(threading_idx))
                 elif isinstance(value, bool):
@@ -164,10 +152,8 @@ class ConfigManager(BaseService, ConfigManagerInterface):
                 else:
                     config.set('server', key, str(value))
             
-            # 确保配置文件目录存在
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
             
-            # 检查文件是否可写
             if self.config_file.exists() and not os.access(self.config_file, os.W_OK):
                 self.log_error(f"配置文件无法写入: {self.config_file}")
                 return False
@@ -175,7 +161,6 @@ class ConfigManager(BaseService, ConfigManagerInterface):
             with open(self.config_file, 'w', encoding='utf-8') as configfile:
                 config.write(configfile)
             self.log_info(f"配置文件保存成功: {self.config_file}")
-            # 清除缓存以强制重新加载
             self._config_cache = None
             return True
         except Exception as e:
@@ -195,17 +180,14 @@ class ConfigManager(BaseService, ConfigManagerInterface):
         if not config_data:
             raise ConfigError("配置数据不能为空")
             
-        # 验证端口
         port = config_data.get('port', DEFAULT_PORT)
         if not isinstance(port, int) or not (MIN_PORT <= port <= MAX_PORT):
             raise ConfigError(f"端口必须是 {MIN_PORT}-{MAX_PORT} 范围内的整数")
             
-        # 验证目录
         directory = config_data.get('directory', DEFAULT_DIRECTORY)
         if not validate_directory(directory):
             raise ConfigError(f"目录不存在或无法访问: {directory}")
             
-        # 验证被动模式设置
         if config_data.get('passive', DEFAULT_PASSIVE_MODE):
             passive_start = config_data.get('passive_start', DEFAULT_PASSIVE_START)
             passive_end = config_data.get('passive_end', DEFAULT_PASSIVE_END)

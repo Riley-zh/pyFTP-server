@@ -50,8 +50,9 @@ class ConnectionCounter(BaseService):
     
     def _schedule_save(self) -> None:
         """Schedule save with delay to reduce disk I/O."""
-        # 延迟保存以减少磁盘I/O，但不使用定时器以避免线程问题
+        # 延迟保存以减少磁盘I/O
         # 简单地设置脏标记，实际保存将在适当时机进行
+        # 在这个实现中，我们依赖外部调用来触发保存
         pass
     
     def increment(self) -> None:

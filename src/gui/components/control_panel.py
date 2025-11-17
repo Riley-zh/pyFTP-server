@@ -58,5 +58,4 @@ class GuiControlPanel(QWidget, QtBaseService):
             self.start_btn.setText("启动服务器")
             self.reload_btn.setEnabled(False)
         
-        # 发送信号
         self.server_state_changed.emit(running)
