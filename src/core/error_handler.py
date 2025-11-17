@@ -9,6 +9,9 @@ from functools import wraps
 
 from core.exceptions import PyFTPError
 
+# 初始化日志记录器
+logger = logging.getLogger(__name__)
+
 
 def handle_errors(default_return=None, log_errors=True):
     """
@@ -25,13 +28,13 @@ def handle_errors(default_return=None, log_errors=True):
                 return func(*args, **kwargs)
             except PyFTPError as e:
                 if log_errors:
-                    logging.error(f"PyFTP error in {func.__name__}: {str(e)}")
-                    logging.debug(f"Traceback: {traceback.format_exc()}")
+                    logger.error(f"PyFTP error in {func.__name__}: {str(e)}")
+                    logger.debug(f"Traceback: {traceback.format_exc()}")
                 return default_return
             except Exception as e:
                 if log_errors:
-                    logging.error(f"Unexpected error in {func.__name__}: {str(e)}")
-                    logging.debug(f"Traceback: {traceback.format_exc()}")
+                    logger.error(f"Unexpected error in {func.__name__}: {str(e)}")
+                    logger.debug(f"Traceback: {traceback.format_exc()}")
                 return default_return
         return wrapper
     return decorator
@@ -53,12 +56,12 @@ def safe_call(func: Callable, *args, default_return=None, **kwargs) -> Any:
     try:
         return func(*args, **kwargs)
     except PyFTPError as e:
-        logging.error(f"PyFTP error in {func.__name__}: {str(e)}")
-        logging.debug(f"Traceback: {traceback.format_exc()}")
+        logger.error(f"PyFTP error in {func.__name__}: {str(e)}")
+        logger.debug(f"Traceback: {traceback.format_exc()}")
         return default_return
     except Exception as e:
-        logging.error(f"Unexpected error in {func.__name__}: {str(e)}")
-        logging.debug(f"Traceback: {traceback.format_exc()}")
+        logger.error(f"Unexpected error in {func.__name__}: {str(e)}")
+        logger.debug(f"Traceback: {traceback.format_exc()}")
         return default_return
 
 

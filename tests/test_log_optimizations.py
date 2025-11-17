@@ -9,14 +9,14 @@ import shutil
 from pathlib import Path
 
 # Add src directory to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 # Import PyQt5 and set up QApplication before importing GUI components
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor, QTextCharFormat
 
-from pyftp.gui.components.log_panel import GuiLogPanel
+from gui.components.log_panel import GuiLogPanel
 
 
 def test_log_panel_optimizations():

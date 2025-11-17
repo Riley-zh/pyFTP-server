@@ -66,20 +66,22 @@ class CustomFTPHandler(FTPHandler):
         # Passive ports will be set from config in the manager
         # 获取连接计数器实例
         self.connection_counter = get_connection_counter()
+        # 初始化日志记录器
+        self.logger = logging.getLogger(self.__class__.__name__)
     
     def on_connect(self):
         """Callback when a client connects."""
-        logging.info(f"新连接来自: {self.remote_ip}:{self.remote_port}")
+        self.logger.info(f"新连接来自: {self.remote_ip}:{self.remote_port}")
         # 增加连接计数
         self.connection_counter.increment()
     
     def on_login(self, username):
         """Callback when a user logs in."""
-        logging.info(f"用户登录: {username}@{self.remote_ip}")
+        self.logger.info(f"用户登录: {username}@{self.remote_ip}")
     
     def on_disconnect(self):
         """Callback when a client disconnects."""
-        logging.info(f"连接关闭: {self.remote_ip}:{self.remote_port}")
+        self.logger.info(f"连接关闭: {self.remote_ip}:{self.remote_port}")
         # 减少连接计数
         self.connection_counter.decrement()
 
@@ -88,25 +90,25 @@ class CustomFTPHandler(FTPHandler):
         # 获取文件大小信息
         try:
             bytes_sent = os.path.getsize(file)
-            logging.info(f"文件发送完成: {file} ({bytes_sent} bytes)")
+            self.logger.info(f"文件发送完成: {file} ({bytes_sent} bytes)")
         except Exception as e:
-            logging.warning(f"文件发送完成但无法获取大小: {file} (错误: {str(e)})")
+            self.logger.warning(f"文件发送完成但无法获取大小: {file} (错误: {str(e)})")
 
     def on_file_received(self, file):
         """Callback when a file is received."""
-        logging.info(f"文件接收完成: {file}")
+        self.logger.info(f"文件接收完成: {file}")
 
     def on_incomplete_file_sent(self, file):
         """Callback when an incomplete file is sent."""
-        logging.warning(f"不完整文件发送: {file}")
+        self.logger.warning(f"不完整文件发送: {file}")
 
     def on_incomplete_file_received(self, file):
         """Callback when an incomplete file is received."""
-        logging.warning(f"不完整文件接收: {file}")
+        self.logger.warning(f"不完整文件接收: {file}")
 
     def on_error(self, e):
         """Callback when an error occurs."""
-        logging.error(f"FTP处理错误: {str(e)}")
+        self.logger.error(f"FTP处理错误: {str(e)}")
 
 
 class FTPServerManager(BaseService, ServerManager):
