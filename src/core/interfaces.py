@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 from pathlib import Path
 
-from pyftp.core.exceptions import ConfigError, ServerError, ValidationError
+from core.exceptions import ConfigError, ServerError, ValidationError
 
 
 class ServerManager(ABC):

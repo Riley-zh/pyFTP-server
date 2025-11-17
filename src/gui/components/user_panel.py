@@ -2,14 +2,20 @@
 User panel for displaying user configuration information.
 """
 
+import sys
+import os
+
+# Add src directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 from PyQt5.QtWidgets import (
     QGroupBox, QVBoxLayout, QHBoxLayout, QLabel
 )
 
-from pyftp.core.qt_base_service import QtBaseService
+from core.qt_base_service import QtBaseService
 
 
-class UserPanel(QGroupBox, QtBaseService):
+class GuiUserPanel(QGroupBox, QtBaseService):
     """User panel for displaying user configuration information."""
     
     def __init__(self):

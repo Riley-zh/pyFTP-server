@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional
 from PyQt5.QtCore import QTimer
 
-from pyftp.core.base_service import BaseService
+from core.base_service import BaseService
 
 
 class ConnectionCounter(BaseService):

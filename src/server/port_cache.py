@@ -7,7 +7,7 @@ import threading
 import time
 from typing import Dict, Tuple
 
-from pyftp.core.base_service import BaseService
+from core.base_service import BaseService
 
 
 class PortCache(BaseService):

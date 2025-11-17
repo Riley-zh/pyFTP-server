@@ -7,7 +7,7 @@ import traceback
 from typing import Callable, Any, Optional
 from functools import wraps
 
-from pyftp.core.exceptions import PyFTPError
+from core.exceptions import PyFTPError
 
 
 def handle_errors(default_return=None, log_errors=True):

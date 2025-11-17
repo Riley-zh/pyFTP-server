@@ -1,17 +1,16 @@
 """
-Base service class for PyFTP server components.
+Base service class for PyFTP server components with Qt compatibility.
 """
 
 import logging
-from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 from pathlib import Path
 
-from pyftp.core.exceptions import PyFTPError, ConfigError, ServerError, ValidationError
+from core.exceptions import PyFTPError, ConfigError, ServerError, ValidationError
 
 
-class BaseService(ABC):
-    """Base service class providing common functionality for all services."""
+class QtBaseService:
+    """Base service class providing common functionality for Qt components."""
     
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)

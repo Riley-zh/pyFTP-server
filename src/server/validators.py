@@ -5,10 +5,10 @@ Validation utilities for FTP server configuration.
 import socket
 from typing import Tuple
 
-from pyftp.core.constants import MIN_PORT, MAX_PORT, MIN_PASSIVE_PORT, MAX_PASSIVE_PORT
-from pyftp.core.exceptions import ValidationError
-from pyftp.utils.helpers import validate_directory
-from pyftp.server.port_cache import get_port_cache
+from core.constants import MIN_PORT, MAX_PORT, MIN_PASSIVE_PORT, MAX_PASSIVE_PORT
+from core.exceptions import ValidationError
+from utils.helpers import validate_directory
+from server.port_cache import get_port_cache
 
 
 def validate_port(port: int) -> None:

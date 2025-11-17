@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor, QTextCharFormat
 
-from pyftp.gui.components.log_panel import LogPanel
+from pyftp.gui.components.log_panel import GuiLogPanel
 
 
 def test_log_panel_optimizations():
@@ -30,7 +30,7 @@ def test_log_panel_optimizations():
             app = QApplication(sys.argv)
         
         # Create log panel
-        log_panel = LogPanel()
+        log_panel = GuiLogPanel()
         
         # Test appending logs with different levels
         log_panel.append_log("2023-01-01 12:00:00 INFO: Test info message", "INFO")

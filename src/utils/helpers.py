@@ -6,7 +6,7 @@ import os
 import socket
 from typing import Optional
 
-from pyftp.server.port_cache import get_port_cache
+from server.port_cache import get_port_cache
 
 
 def is_port_available(port: int, host: str = "0.0.0.0") -> bool:

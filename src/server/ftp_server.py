@@ -14,19 +14,19 @@ from pyftpdlib.authorizers import DummyAuthorizer
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.servers import FTPServer, ThreadedFTPServer
 
-from pyftp.core.base_service import BaseService
-from pyftp.core.interfaces import ServerManager
-from pyftp.core.constants import (
+from core.base_service import BaseService
+from core.interfaces import ServerManager
+from core.constants import (
     DEFAULT_PORT, DEFAULT_DIRECTORY, DEFAULT_PASSIVE_MODE,
     DEFAULT_PASSIVE_START, DEFAULT_PASSIVE_END
 )
-from pyftp.core.exceptions import ServerError, ValidationError
-from pyftp.core.error_handler import handle_errors, get_error_details
-from pyftp.server.validators import (
+from core.exceptions import ServerError, ValidationError
+from core.error_handler import handle_errors, get_error_details
+from server.validators import (
     validate_port, validate_port_range, validate_passive_port_range,
     validate_server_directory, is_port_available, is_port_range_available
 )
-from pyftp.server.connection_counter import get_connection_counter
+from server.connection_counter import get_connection_counter
 
 
 # 抑制不必要的警告

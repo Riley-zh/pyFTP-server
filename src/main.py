@@ -7,10 +7,14 @@ import sys
 import os
 import logging
 from typing import NoReturn
+
+# Add src directory to Python path
+sys.path.insert(0, os.path.dirname(__file__))
+
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
 
-from pyftp.gui.window import FTPWindow
+from gui.window import GuiMainWindow
 
 
 def main() -> NoReturn:
@@ -38,7 +42,7 @@ def main() -> NoReturn:
     #     datefmt='%Y-%m-%d %H:%M:%S'
     # )
     
-    window = FTPWindow()
+    window = GuiMainWindow()
     window.show()
     sys.exit(app.exec_())
 

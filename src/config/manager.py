@@ -8,17 +8,17 @@ import time
 from typing import Dict, Any, Optional
 from pathlib import Path
 
-from pyftp.core.base_service import BaseService
-from pyftp.core.interfaces import ConfigManager as ConfigManagerInterface
-from pyftp.core.constants import (
+from core.base_service import BaseService
+from core.interfaces import ConfigManager as ConfigManagerInterface
+from core.constants import (
     DEFAULT_PORT, DEFAULT_DIRECTORY, DEFAULT_PASSIVE_MODE,
     DEFAULT_PASSIVE_START, DEFAULT_PASSIVE_END, 
     DEFAULT_ENCODING_IDX, DEFAULT_THREADING_IDX,
     MIN_PORT, MAX_PORT, MIN_PASSIVE_PORT, MAX_PASSIVE_PORT
 )
-from pyftp.core.exceptions import ConfigError
-from pyftp.core.error_handler import handle_errors, get_error_details
-from pyftp.utils.helpers import validate_directory
+from core.exceptions import ConfigError
+from core.error_handler import handle_errors, get_error_details
+from utils.helpers import validate_directory
 
 
 class ConfigManager(BaseService, ConfigManagerInterface):

@@ -2,7 +2,12 @@
 Configuration panel for the FTP server settings.
 """
 
+import sys
 import os
+
+# Add src directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 from PyQt5.QtWidgets import (
     QGroupBox, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QCheckBox, QComboBox
@@ -10,18 +15,18 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import pyqtSignal, QTimer
 from PyQt5.QtGui import QIntValidator
 
-from pyftp.core.qt_base_service import QtBaseService
-from pyftp.core.constants import (
+from core.qt_base_service import QtBaseService
+from core.constants import (
     DEFAULT_PORT, DEFAULT_DIRECTORY, DEFAULT_PASSIVE_MODE,
     DEFAULT_PASSIVE_START, DEFAULT_PASSIVE_END, 
     ENCODING_OPTIONS, THREADING_OPTIONS,
     MIN_PORT, MAX_PORT, MIN_PASSIVE_PORT, MAX_PASSIVE_PORT
 )
-from pyftp.utils.helpers import validate_directory
-from pyftp.core.exceptions import ValidationError
+from utils.helpers import validate_directory
+from core.exceptions import ValidationError
 
 
-class ConfigPanel(QGroupBox, QtBaseService):
+class GuiConfigPanel(QGroupBox, QtBaseService):
     """Configuration panel for FTP server settings."""
     
     # Signals

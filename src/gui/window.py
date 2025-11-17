@@ -4,6 +4,10 @@ Main window for the PyFTP server application.
 
 import sys
 import os
+
+# Add src directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
 import logging
 import configparser
 import warnings
@@ -21,18 +25,18 @@ from PyQt5.QtCore import QTimer, pyqtSignal, QPropertyAnimation, QEasingCurve
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtCore import QEvent
 
-from pyftp.core.qt_base_service import QtBaseService
-from pyftp.gui.components.config_panel import ConfigPanel
-from pyftp.gui.components.control_panel import ControlPanel
-from pyftp.gui.components.log_panel import LogPanel
-from pyftp.gui.components.user_panel import UserPanel
-from pyftp.server.ftp_server import FTPServerManager
-from pyftp.config.manager import ConfigManager
-from pyftp.core.constants import STATUS_UPDATE_INTERVAL
-from pyftp.core.interfaces import ServerManager, ConfigManager as ConfigManagerInterface
-from pyftp.core.exceptions import PyFTPError, ConfigError, ServerError, ValidationError
-from pyftp.server.logger import QtLogHandler
-from pyftp.server.connection_counter import get_connection_counter
+from core.qt_base_service import QtBaseService
+from gui.components.config_panel import GuiConfigPanel
+from gui.components.control_panel import GuiControlPanel
+from gui.components.log_panel import GuiLogPanel
+from gui.components.user_panel import GuiUserPanel
+from server.ftp_server import FTPServerManager
+from config.manager import ConfigManager
+from core.constants import STATUS_UPDATE_INTERVAL
+from core.interfaces import ServerManager, ConfigManager as ConfigManagerInterface
+from core.exceptions import PyFTPError, ConfigError, ServerError, ValidationError
+from server.logger import QtLogHandler
+from server.connection_counter import get_connection_counter
 
 
 # 抑制不必要的警告
@@ -40,7 +44,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning,
                        message="write permissions assigned to anonymous user")
 
 
-class FTPWindow(QMainWindow, QtBaseService):
+class GuiMainWindow(QMainWindow, QtBaseService):
     """Main application window."""
     
     def __init__(self):
@@ -78,19 +82,19 @@ class FTPWindow(QMainWindow, QtBaseService):
         main_layout.setContentsMargins(10, 10, 10, 10)
         
         # 配置面板
-        self.config_panel = ConfigPanel()
+        self.config_panel = GuiConfigPanel()
         main_layout.addWidget(self.config_panel)
         
         # 用户信息面板
-        self.user_panel = UserPanel()
+        self.user_panel = GuiUserPanel()
         main_layout.addWidget(self.user_panel)
         
         # 控制按钮面板
-        self.control_panel = ControlPanel()
+        self.control_panel = GuiControlPanel()
         main_layout.addWidget(self.control_panel)
         
         # 日志显示面板
-        self.log_panel = LogPanel()
+        self.log_panel = GuiLogPanel()
         main_layout.addWidget(self.log_panel)
         
         # 状态栏

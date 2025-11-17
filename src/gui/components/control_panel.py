@@ -2,15 +2,21 @@
 Control panel with action buttons for the FTP server.
 """
 
+import sys
+import os
+
+# Add src directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QPushButton
 )
 from PyQt5.QtCore import pyqtSignal
 
-from pyftp.core.qt_base_service import QtBaseService
+from core.qt_base_service import QtBaseService
 
 
-class ControlPanel(QWidget, QtBaseService):
+class GuiControlPanel(QWidget, QtBaseService):
     """Control panel with action buttons."""
     
     # Signals

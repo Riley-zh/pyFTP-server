@@ -7,7 +7,7 @@ import threading
 from collections import deque
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from pyftp.core.base_service import BaseService
+from core.base_service import BaseService
 
 
 class QtLogHandler(QObject, logging.Handler):

@@ -2,6 +2,12 @@
 Log panel for displaying server logs.
 """
 
+import sys
+import os
+
+# Add src directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 from PyQt5.QtWidgets import (
     QGroupBox, QVBoxLayout, QHBoxLayout,
     QLabel, QTextEdit, QComboBox, QScrollBar
@@ -9,12 +15,12 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import pyqtSignal, QTimer
 from PyQt5.QtGui import QColor, QTextCursor, QTextCharFormat
 
-from pyftp.core.qt_base_service import QtBaseService
-from pyftp.core.constants import LOG_LEVEL_ALL, LOG_LEVEL_INFO, LOG_LEVEL_WARNING, LOG_LEVEL_ERROR, MAX_LOG_LINES
+from core.qt_base_service import QtBaseService
+from core.constants import LOG_LEVEL_ALL, LOG_LEVEL_INFO, LOG_LEVEL_WARNING, LOG_LEVEL_ERROR, MAX_LOG_LINES
 from PyQt5.QtCore import QTimer
 
 
-class LogPanel(QGroupBox, QtBaseService):
+class GuiLogPanel(QGroupBox, QtBaseService):
     """Log panel for displaying server logs."""
     
     def __init__(self):

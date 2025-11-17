@@ -7,17 +7,17 @@ import logging
 from typing import Dict, Any, Optional
 from pathlib import Path
 
-from pyftp.core.base_service import BaseService
-from pyftp.core.interfaces import ServerManager, ConfigManager
-from pyftp.server.ftp_server import FTPServerManager
-from pyftp.config.manager import ConfigManager as ConfigManagerImpl
-from pyftp.core.constants import (
+from core.base_service import BaseService
+from core.interfaces import ServerManager, ConfigManager
+from server.ftp_server import FTPServerManager
+from config.manager import ConfigManager as ConfigManagerImpl
+from core.constants import (
     DEFAULT_PORT, DEFAULT_DIRECTORY, DEFAULT_PASSIVE_MODE,
     DEFAULT_PASSIVE_START, DEFAULT_PASSIVE_END, 
     DEFAULT_ENCODING_IDX, DEFAULT_THREADING_IDX
 )
-from pyftp.core.exceptions import PyFTPError, ConfigError, ServerError
-from pyftp.core.error_handler import handle_errors, get_error_details
+from core.exceptions import PyFTPError, ConfigError, ServerError
+from core.error_handler import handle_errors, get_error_details
 
 
 class PyFTPApplication(BaseService):
