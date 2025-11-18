@@ -1,4 +1,4 @@
-# PyFTP Server GUI
+# PyFileServer(FTPServer GUI)
 
 一个基于 PyQt5 和 pyftpdlib 构建的图形化 FTP 服务器应用程序。
 
